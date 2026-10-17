@@ -1,11 +1,14 @@
-"""CLI: python -m product_brain run | events"""
+"""CLI: python -m product_brain run | events | viewer"""
 from __future__ import annotations
 
 import argparse
 import asyncio
+import subprocess
+import sys
 
 from .events import generate
 from .runner import TEAMS, run
+from .viewer_export import VIEWER, export_runs
 
 
 def main():
@@ -23,7 +26,19 @@ def main():
     e.add_argument("--seed", type=int, default=7)
     e.add_argument("--days", type=int, default=21)
     e.add_argument("--traps", action="store_true", help="annotate trap events (never shown to agents)")
+    v = sub.add_parser("viewer", help="publish all runs to the viewer and open it")
+    v.add_argument("--out", default="runs")
+    v.add_argument("--no-open", action="store_true")
     args = ap.parse_args()
+
+    if args.cmd == "viewer":
+        index = export_runs(args.out)
+        print(f"published {len(index)} run(s) to {VIEWER / 'runs'}")
+        if not args.no_open:
+            page = VIEWER / "index.html"
+            opener = {"darwin": ["open"], "win32": ["cmd", "/c", "start", ""]}.get(sys.platform, ["xdg-open"])
+            subprocess.run([*opener, str(page)], check=False)
+        return
 
     if args.cmd == "events":
         w = generate(args.seed, args.days)

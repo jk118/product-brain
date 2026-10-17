@@ -78,6 +78,19 @@ def latest_claim_answer(claims: list[dict], q: dict) -> dict:
         if actual and target:
             return {"answer": "above" if actual["value"] >= target["value"] else "below", "confidence": 0.8,
                     "reason": f"{claim_summary(actual)}; {claim_summary(target)}"}
+    elif t == "rename":
+        for c in reversed(claims):
+            if c["kind"] == "rename" and c["old"].lower() == name:
+                return {"answer": c["new"], "confidence": 0.8, "reason": claim_summary(c)}
+    elif t == "rolled_back":
+        statuses = [c for c in claims if c["kind"] == "status" and about(c)]
+        if statuses:
+            pulled = any(c["status"] == "pulled" for c in statuses)
+            return {"answer": "yes" if pulled else "no", "confidence": 0.7, "reason": f"{len(statuses)} status notes"}
+    elif t == "adoption":
+        for c in reversed(claims):
+            if c["kind"] == "metric" and about(c):
+                return {"answer": c["value"], "confidence": 0.8, "reason": claim_summary(c)}
     elif t == "release_notes":
         state = {}
         for c in claims:

@@ -48,7 +48,10 @@ class Curator:
             seen.add(key)
             handler = getattr(self, f"_{p['kind']}", None)
             if handler:
+                before = len(log)
                 await handler(brain, day, p, log)
+                for entry in log[before:]:  # lets the viewer show what happened to each proposal
+                    entry["event_id"] = p["event_id"]
         self._budget(brain, day, log)
         return log
 
@@ -118,6 +121,9 @@ class Curator:
         if match:
             n = brain.bump_issue(match["id"], tokens, p["day"], p["event_id"])
             log.append(brain.log(day, "dedup", name, f"report #{p['event_id']} merged into I{match['id']} ({n} reports)"))
+        elif fixed := await self._match_issue(brain, fid, p["symptom"], tokens, status="fixed"):
+            brain.bump_issue(fixed["id"], tokens, p["day"], p["event_id"], reopen=True)
+            log.append(brain.log(day, "reopen", name, f"I{fixed['id']} was fixed but is reported again (#{p['event_id']}): regression"))
         else:
             iid = brain.add_issue(fid, p["symptom"], tokens, p["day"], p["event_id"])
             log.append(brain.log(day, "new_issue", name, f"I{iid}: {p['symptom']}"))
@@ -165,8 +171,8 @@ class Curator:
 
     # --- helpers ---------------------------------------------------------------
 
-    async def _match_issue(self, brain, fid, symptom, tokens):
-        candidates = brain.issues(fid, "open")
+    async def _match_issue(self, brain, fid, symptom, tokens, status="open"):
+        candidates = brain.issues(fid, status)
         if not candidates:
             return None
         scored = sorted(((overlap(tokens, set(json.loads(c["tokens"]))), c) for c in candidates),

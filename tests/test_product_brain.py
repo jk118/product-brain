@@ -25,18 +25,31 @@ class GeneratorTest(unittest.TestCase):
     def test_traps_land_in_truth(self):
         for seed in range(10):
             w = generate(seed)
-            final = w.truth[-1]
             by_trap = {f.trap: f for f in w.features}
-            self.assertEqual(set(final[by_trap["rollback"].fid]["platforms"].values()), {"pulled"})
+            final = w.truth[-1]
+            history = lambda trap: [day[by_trap[trap].fid] for day in w.truth]
+
+            rollback = history("rollback")
+            self.assertTrue(any(set(s["platforms"].values()) == {"pulled"} for s in rollback))
+            self.assertEqual(set(rollback[-1]["platforms"].values()), {"live"})  # relaunched
+
             self.assertEqual(set(final[by_trap["rumor"].fid]["platforms"].values()), {"beta"})
             split = final[by_trap["platform_split"].fid]["platforms"]
             self.assertEqual((split["ios"], split["android"]), ("live", "beta"))
+            partial = final[by_trap["partial_rollback"].fid]["platforms"]
+            self.assertEqual((partial["ios"], partial["android"]), ("live", "pulled"))
+
             renamed = final[by_trap["rename_split"].fid]
             self.assertEqual(renamed["name"], by_trap["rename_split"].rename_to)
-            data = final[by_trap["data_vs_assumption"].fid]
-            self.assertLess(data["adoption"], data["target"])
-            self.assertEqual(final[by_trap["duplicates"].fid]["issues"], {"export-crash": "fixed", "timezone": "open"})
 
+            data = history("data_vs_assumption")
+            self.assertTrue(any(s["adoption"] and s["adoption"] < s["target"] for s in data))
+            self.assertGreaterEqual(data[-1]["adoption"], data[-1]["target"])  # target revised down
+
+            issues = [s["issues"].get("export-crash") for s in history("duplicates")]
+            self.assertIn("fixed", issues)
+            self.assertEqual(issues[-1], "open")  # regression
+            self.assertEqual(final[by_trap["duplicates"].fid]["issues"]["timezone"], "open")
 
     def test_no_feature_regresses_from_live_to_beta(self):
         # A launch must never be followed by an "enters beta" release (only a rollback may undo it).
@@ -93,6 +106,17 @@ class CuratorTest(unittest.TestCase):
         self.ingest(6, proposal("issue", 9, 6, "support_ticket", feature="X", symptom="X shows the wrong timezone on shared items."))
         issues = self.brain.issues(self.brain.resolve("X"), "open")
         self.assertEqual(sorted(i["reports"] for i in issues), [1, 5])
+
+
+    def test_regression_reopens_fixed_issue(self):
+        crash = "App crashes when I export a big X document."
+        self.ingest(1, proposal("issue", 1, 1, "support_ticket", feature="X", symptom=crash))
+        self.ingest(2, proposal("issue_fixed", 2, 2, "release_log", feature="X",
+                                symptom="Fixed a crash when exporting large documents from X."))
+        log = self.ingest(4, proposal("issue", 3, 4, "support_ticket", feature="X",
+                                      symptom="X is crashing on export again after the last update."))
+        self.assertEqual(log[-1]["action"], "reopen")
+        self.assertEqual(len(self.brain.issues(self.brain.resolve("X"), "open")), 1)
 
 
 class ParsingTest(unittest.TestCase):

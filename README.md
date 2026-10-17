@@ -70,9 +70,16 @@ python -m product_brain events --seed 7 --traps   # inspect the generated stream
 python -m unittest discover -s tests
 ```
 
-Outputs go to `runs/seed<N>-<mode>-<extract>/`: `run.json` for the viewer, plus `product_brain.db` (SQLite
-with events, truth, the naive notes, all brain tables, the curator log, every graded answer and the metrics).
-The viewer can load any `run.json` via **Load run.json**, and `index.html#day=12` jumps to a day.
+Outputs go to `runs/seed<N>-<mode>-<extract>/`: `run.json`, plus `product_brain.db` (SQLite with events,
+truth, the naive notes, all brain tables, the curator log, every graded answer and the metrics).
+
+### Viewer
+
+Every run is published to `viewer/runs/` automatically. `python -m product_brain viewer` republishes all
+runs and opens the page (no server or build step needed). Pick a run from the dropdown, or open
+**All runs** to compare stale rate and accuracy across every run. Links like
+`viewer/index.html#run=seed7-live-oracle&day=12` jump straight to a run and day, which helps in a demo.
+Use the arrow keys to step through days and the space bar to play or pause.
 
 ### Modes, honestly
 

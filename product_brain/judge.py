@@ -10,6 +10,7 @@ import random
 from .events import PLATFORMS, World
 
 STALE_CONFIDENCE = 0.6
+ADOPTION_TOLERANCE = 0.02  # adoption answers within 2 points count as correct
 
 
 def checkpoint_days(days: int, rng: random.Random) -> list[int]:
@@ -29,7 +30,15 @@ def truth_value(qtype: str, state: dict, platform: str | None = None):
         if state["adoption"] is None or state["target"] is None:
             return None
         return "above" if state["adoption"] >= state["target"] else "below"
+    if qtype == "rename":
+        return state["name"]
+    if qtype == "adoption":
+        return state["adoption"]
     raise ValueError(qtype)
+
+
+def ever_pulled(world: World, fid: str, day: int) -> str:
+    return "yes" if any("pulled" in world.truth[d][fid]["platforms"].values() for d in range(day + 1)) else "no"
 
 
 def live_pairs(world: World, day: int) -> set[tuple[str, str]]:
@@ -40,11 +49,13 @@ def make_questions(world: World, day: int, rng: random.Random, finale: bool = Fa
     snap = world.truth[day]
     qs = []
 
-    def add(qtype, f, name, text, platform=None, **extra):
-        truth = truth_value(qtype, snap[f.fid], platform)
+    def add(qtype, f, name, text, platform=None, value=truth_value, **extra):
+        truth = value(qtype, snap[f.fid], platform) if value is truth_value else value(day)
         if truth is None:
             return
-        past = {truth_value(qtype, world.truth[d][f.fid], platform) for d in range(day)} - {None, truth}
+        earlier = (value(qtype, world.truth[d][f.fid], platform) if value is truth_value else value(d)
+                   for d in range(day))
+        past = {v for v in earlier if v is not None and not matches(qtype, v, truth)}
         qs.append({"qid": f"d{day}-{qtype}-{f.fid}{'-' + platform if platform else ''}", "day": day, "type": qtype,
                    "fid": f.fid, "name": name, "platform": platform, "text": text, "truth": truth,
                    "past": sorted(past, key=str), "agents": ["support", "analyst"], **extra})
@@ -65,6 +76,14 @@ def make_questions(world: World, day: int, rng: random.Random, finale: bool = Fa
         if f.trap == "duplicates" and s["issues"]:
             add("issues", f, name, f"How many distinct open bugs are currently known for {name}?")
         add("target", f, name, f"Is {name} meeting its adoption target?")
+        for old in s["former_names"]:
+            add("rename", f, old, f"A customer asks: where did {old} go? What is it called now?")
+        launched = any("live" in world.truth[d][f.fid]["platforms"].values() for d in range(day + 1))
+        if f.trap in ("rollback", "partial_rollback", "steady") and launched:
+            add("rolled_back", f, name, f"Has {name} ever been rolled back or pulled, on any platform?",
+                value=lambda d, fid=f.fid: ever_pulled(world, fid, d))
+        if f.trap in ("steady", "data_vs_assumption"):
+            add("adoption", f, name, f"What is {name}'s latest measured weekly adoption?")
 
     truth = live_pairs(world, day)
     past = set().union(*(live_pairs(world, d) for d in range(day))) - truth if day else set()
@@ -78,11 +97,20 @@ def make_questions(world: World, day: int, rng: random.Random, finale: bool = Fa
 def grade(world: World, q: dict, a: dict) -> dict:
     if q["type"] == "release_notes":
         return grade_notes(world, q, a)
-    ans = a["answer"]
+    ans, t = a["answer"], q["type"]
     abstain = ans == "unknown"
-    correct = not abstain and ans == q["truth"]
-    stale = not correct and not abstain and ans in q["past"] and a["confidence"] >= STALE_CONFIDENCE
+    correct = not abstain and matches(t, ans, q["truth"])
+    stale = (not correct and not abstain and a["confidence"] >= STALE_CONFIDENCE
+             and any(matches(t, ans, p) for p in q["past"]))
     return {"correct": correct, "stale": stale, "abstain": abstain}
+
+
+def matches(qtype: str, answer, value) -> bool:
+    if qtype == "adoption":
+        return isinstance(answer, (int, float)) and abs(answer - value) <= ADOPTION_TOLERANCE
+    if qtype == "rename":
+        return str(answer).strip().lower() == str(value).strip().lower()
+    return answer == value
 
 
 def grade_notes(world: World, q: dict, a: dict) -> dict:

@@ -26,6 +26,22 @@ CREATE TABLE IF NOT EXISTS brain_log(id INTEGER PRIMARY KEY, day INT, action TEX
 """
 
 
+def _landmark(text: str) -> bool:
+    return "-> pulled" in text or text.startswith("renamed")
+
+
+def _overall(plats: dict) -> str:
+    """One-line verdict so readers don't have to infer availability from per-platform rows."""
+    live = [PLATFORM_LABEL[p] for p in PLATFORMS if p in plats and plats[p]["status"] == "live"]
+    beta = [PLATFORM_LABEL[p] for p in PLATFORMS if p in plats and plats[p]["status"] == "beta"]
+    if live:
+        return f"overall: LIVE (generally available on {', '.join(live)})" + (f"; beta on {', '.join(beta)}" if beta else "")
+    if beta:
+        return f"overall: BETA only (on {', '.join(beta)})"
+    pulled = any(r["status"] == "pulled" for r in plats.values())
+    return "overall: NOT AVAILABLE (" + ("pulled / rolled back" if pulled else "planned, not released") + ")"
+
+
 class ProductBrain:
     name = "brain"
 
@@ -115,11 +131,12 @@ class ProductBrain:
                               (fid, summary, json.dumps(sorted(tokens)), day, day, json.dumps([event_id])))
         return cur.lastrowid
 
-    def bump_issue(self, iid, tokens, day, event_id):
+    def bump_issue(self, iid, tokens, day, event_id, reopen=False):
         row = self.db.execute("SELECT * FROM brain_issues WHERE id=?", (iid,)).fetchone()
         merged = sorted(set(json.loads(row["tokens"])) | set(tokens))
         ids = json.loads(row["event_ids"]) + [event_id]
-        self.db.execute("UPDATE brain_issues SET reports=reports+1, tokens=?, last_day=?, event_ids=? WHERE id=?",
+        self.db.execute("UPDATE brain_issues SET reports=reports+1, tokens=?, last_day=?, event_ids=?"
+                        + (", status='open'" if reopen else "") + " WHERE id=?",
                         (json.dumps(merged), day, json.dumps(ids), iid))
         return row["reports"] + 1
 
@@ -153,7 +170,8 @@ class ProductBrain:
         """Drop old history, long-fixed issues and resolved disputes. Returns rows removed."""
         removed = 0
         for f in self.features():
-            ids = [r["id"] for r in self.history(f["id"])]
+            # Rollbacks and renames are landmarks agents get asked about later; never prune them.
+            ids = [r["id"] for r in self.history(f["id"]) if not _landmark(r["text"])]
             for hid in ids[:-keep_history] if keep_history else ids:
                 self.db.execute("DELETE FROM brain_history WHERE id=?", (hid,))
                 removed += 1
@@ -178,6 +196,7 @@ class ProductBrain:
             lines.append(f"\n## {f['name']}" + (f"  [formerly: {', '.join(former)}]" if former else "")
                          + f"  (last verified day {f['last_verified']})")
             plats = self.platforms(fid)
+            lines.append("  " + _overall(plats))
             lines.append("  " + " | ".join(
                 f"{PLATFORM_LABEL[p]}: {plats[p]['status']} ({plats[p]['source']} #{plats[p]['event_id']}, day {plats[p]['day']})"
                 for p in PLATFORMS if p in plats))
@@ -248,6 +267,17 @@ class ProductBrain:
                     "reason": f"{r['status']} per {r['source']} #{r['event_id']}"}
         if t == "issues":
             return {"answer": len(self.issues(fid, "open")), "confidence": 0.8, "reason": "deduplicated issues"}
+        if t == "rename":
+            return {"answer": self.name_of(fid), "confidence": 0.9, "reason": "alias resolved"}
+        if t == "rolled_back":
+            pulled = any(r["status"] == "pulled" for r in plats.values()) or any(
+                _landmark(h["text"]) and "-> pulled" in h["text"] for h in self.history(fid))
+            return {"answer": "yes" if pulled else "no", "confidence": 0.8, "reason": "status and history"}
+        if t == "adoption":
+            actual = self.metric(fid, "actual")
+            if actual:
+                return {"answer": actual["value"], "confidence": 0.9, "reason": f"usage_stats day {actual['day']}"}
+            return dict(UNKNOWN)
         if t == "target":
             actual, target, opinion = (self.metric(fid, k) for k in ("actual", "target", "opinion"))
             if actual and target:

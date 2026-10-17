@@ -45,6 +45,13 @@ FORMATS = {
               "Count duplicate reports of the same bug once. Exclude bugs that have been fixed.",
     "target": '{"answer": "above" | "below" | "unknown", "confidence": 0.0-1.0, "reason": "<one sentence>"}\n'
               "Compare the latest measured adoption with the adoption target.",
+    "rename": '{"answer": "<the feature\'s current name>" | "unknown", "confidence": 0.0-1.0, "reason": "<one sentence>"}\n'
+              "If the feature was renamed, give its new name. If it was not renamed, give the name it has now.",
+    "rolled_back": '{"answer": "yes" | "no" | "unknown", "confidence": 0.0-1.0, "reason": "<one sentence>"}\n'
+                   '"yes" if it was ever rolled back, pulled or disabled on any platform, even if it is back now.',
+    "adoption": '{"answer": <latest measured weekly adoption as a fraction, e.g. 0.12> | "unknown", '
+                '"confidence": 0.0-1.0, "reason": "<one sentence>"}\n'
+                "Use the most recent usage measurement, not targets or opinions.",
     "release_notes": '{"features": [{"name": "<feature>", "platforms": ["ios", "android", "web"]}], "confidence": 0.0-1.0}\n'
                      "Include only features that are generally available right now, and only the platforms where "
                      "they are generally available.",
@@ -99,12 +106,25 @@ def normalize(q: dict, raw: dict) -> dict:
                 plats = [p.lower() for p in f.get("platforms") or [] if isinstance(p, str) and p.lower() in PLATFORMS]
                 feats.append({"name": f["name"], "platforms": plats or list(PLATFORMS)})
         return out | {"answer": feats}
+    if t == "rename":
+        a = str(raw.get("answer", "unknown")).strip().strip("\"'.")
+        if not a or a.lower() == "unknown":
+            out["confidence"] = 0.0
+            a = "unknown"
+        return out | {"answer": a}
+    if t == "adoption":
+        v = raw.get("answer")
+        m = re.search(r"\d+(?:\.\d+)?", str(v)) if v is not None else None
+        if not m:
+            return out | {"answer": "unknown", "confidence": 0.0}
+        x = float(m.group())
+        return out | {"answer": round(x / 100 if "%" in str(v) or x > 1 else x, 4)}
     a = str(raw.get("answer", "unknown")).strip().lower().replace(" ", "_")
     if t == "status":
         a = {"available": "live", "ga": "live", "yes": "live", "not_available_yet": "not_available", "no": "not_available",
              "pulled": "not_available", "planned": "not_available", "rolled_back": "not_available"}.get(a, a)
         a = a if a in ("live", "beta", "not_available") else "unknown"
-    elif t == "platform":
+    elif t in ("platform", "rolled_back"):
         a = {"true": "yes", "false": "no"}.get(a, a)
         a = a if a in ("yes", "no") else "unknown"
     elif t == "issues":

@@ -41,6 +41,49 @@ h1 { font-size: 22px; margin: 0 0 2px; }
 h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 0 0 10px; }
 .sub { color: var(--ink-2); margin: 0 0 16px; }
 .panel { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 14px; min-width: 0; }
+.scope { color: var(--ink-2); font-size: 12.5px; margin: 0 0 6px; }
+.explain { color: var(--ink-2); font-size: 12.5px; margin: 0 0 10px; max-width: 900px; }
+.heroes { display: flex; gap: 22px; align-items: baseline; flex-wrap: wrap; }
+.qa-wrap { overflow-x: auto; }
+.agents { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.agent { border: 1px solid var(--ring); border-radius: 10px; padding: 12px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.agent h3 { margin: 0; font-size: 15px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.agent .kind { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; }
+.agent .role { font-size: 12.5px; color: var(--ink-2); }
+.agent .reads { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 11.5px; color: var(--muted); }
+.agent .src { font-size: 11px; padding: 0 6px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--ring); color: var(--ink-2); }
+.agent h4 { margin: 4px 0 0; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.agent .line { font-size: 12.5px; }
+.agent ul { list-style: none; margin: 0; padding: 0; font-size: 12px; }
+.agent li { padding: 3px 0; border-bottom: 1px solid var(--grid); display: flex; justify-content: space-between; gap: 8px; }
+.agent li span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.agent .out { white-space: nowrap; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; }
+.agent .stats { display: grid; grid-template-columns: auto repeat(3, minmax(0, 1fr)); gap: 2px 8px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.agent .stats .h { color: var(--muted); font-size: 11px; }
+.agent details summary { margin: 0; font-size: 12px; }
+.rn { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+.rn .col { border: 1px solid var(--ring); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.rn .col.truth { background: var(--surface-2); }
+.rn h3 { margin: 0 0 2px; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.rn .f1 { color: var(--ink-2); font-size: 12px; margin-bottom: 8px; }
+.rn ul { list-style: none; margin: 0; padding: 0; }
+.rn li { padding: 4px 0; border-bottom: 1px solid var(--grid); font-size: 13px; }
+.rn li .plats { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.rn .chip { font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--ring); }
+.rn .chip.ok { border-color: var(--good); } .rn .chip.bad { border-color: var(--critical); color: var(--critical); }
+.rn .chip.stale { border-color: var(--critical); color: var(--critical); background: var(--snap); font-weight: 700; }
+.rn .missing { color: var(--ink-2); font-size: 12px; margin-top: 8px; }
+.rn .missing b { color: var(--ink); }
+@media (max-width: 860px) { .rn { grid-template-columns: minmax(0,1fr); } }
+.qa { table-layout: fixed; min-width: 760px; }
+.qa td, .qa th { text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.qa td { font-variant-numeric: normal; }
+.qa col.q { width: 26%; } .qa col.t { width: 11%; }
+.badge { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; padding: 0 6px; border-radius: 999px;
+  margin-left: 4px; border: 1px solid currentColor; }
+.badge.ok { color: var(--good); } .badge.bad { color: var(--critical); } .badge.stale { color: var(--critical); background: var(--snap); }
+.badge.unk { color: var(--muted); }
+.qa .split { display: block; color: var(--ink-2); font-size: 11.5px; }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 14px; }
 .tile .label { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-weight: 600; }
 .tile .hero { font-size: 34px; font-weight: 700; margin: 4px 0 0; }
@@ -53,6 +96,19 @@ button, select { font: inherit; color: var(--ink); background: var(--surface); b
   border-radius: 8px; padding: 6px 12px; cursor: pointer; }
 button:hover { background: var(--surface-2); }
 .daylabel { font-weight: 700; min-width: 80px; }
+#run-picker { max-width: 100%; }
+.runs { margin-bottom: 14px; }
+.runs summary { cursor: pointer; display: flex; align-items: baseline; gap: 8px; list-style: none; }
+.runs summary::-webkit-details-marker { display: none; }
+.runs summary::before { content: "▸"; color: var(--ink-2); }
+.runs[open] summary::before { content: "▾"; }
+.runs summary h2 { margin: 0; }
+.runs summary span { color: var(--muted); font-size: 12.5px; }
+.runs .scroll { overflow-x: auto; margin-top: 10px; }
+.runs tr.pick { cursor: pointer; }
+.runs tr.pick:hover td { background: var(--surface-2); }
+.runs .mock { color: var(--muted); }
+code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
 .grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 14px; margin-bottom: 14px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
 .card { border: 1px solid var(--ring); border-radius: 10px; padding: 10px 12px; background: var(--surface); position: relative; }
@@ -68,7 +124,7 @@ button:hover { background: var(--surface-2); }
 .card.snap { animation: snap .9s ease; }
 .card.merge { animation: merge 1.2s ease; }
 .card.conflict { animation: flash 1.2s ease 2; }
-.tag { position: absolute; top: 8px; right: 10px; font-size: 11px; font-weight: 600; color: var(--ink-2); }
+.tag { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; color: var(--ink-2); margin-bottom: 2px; }
 @keyframes snap { 0% { transform: translateX(0); background: var(--snap); } 20% { transform: translateX(-6px); }
   40% { transform: translateX(6px); } 60% { transform: translateX(-3px); } 100% { transform: none; background: var(--surface); } }
 @keyframes merge { 0% { transform: scale(.92); background: var(--merge); } 100% { transform: none; background: var(--surface); } }
@@ -112,9 +168,15 @@ footer { max-width: 1280px; margin: 0 auto; padding: 8px 16px 32px; color: var(-
 <body>
 <header>
   <h1>Product Brain</h1>
-  <p class="sub" id="meta">Load a run to begin.</p>
+  <p class="sub" id="meta">No runs yet. Run <code>python -m product_brain run</code>, then reload.</p>
+  <details class="panel runs" id="runs-panel">
+    <summary><h2>All runs</h2> <span id="runs-count"></span></summary>
+    <div id="runs-table"></div>
+  </details>
+  <p class="scope" id="scope"></p>
   <div class="tiles" id="tiles"></div>
   <div class="controls panel">
+    <select id="run-picker" aria-label="Run"></select>
     <button id="play">▶ Play</button>
     <span class="daylabel" id="daylabel">Day 0</span>
     <input type="range" id="slider" min="0" max="0" value="0" aria-label="Simulated day">
@@ -126,6 +188,13 @@ footer { max-width: 1280px; margin: 0 auto; padding: 8px 16px 32px; color: var(-
   </div>
 </header>
 <main>
+  <section class="panel" style="margin-bottom:14px">
+    <h2 id="agents-title">Agents</h2>
+    <p class="explain">All three teams run the same three working agents with identical prompts. Only their memory differs.
+      Every day each working agent reads the events its role can see and proposes claims to its team's memory. At checkpoints
+      it answers the judge's questions from that memory. The Product Brain team adds a Curator that decides what gets in.</p>
+    <div class="agents" id="agents"></div>
+  </section>
   <div class="grid">
     <section class="panel">
       <h2>Living product timeline (what the brain believes)</h2>
@@ -158,13 +227,28 @@ footer { max-width: 1280px; margin: 0 auto; padding: 8px 16px 32px; color: var(-
     </section>
   </div>
   <section class="panel" style="margin-bottom:14px">
+    <h2 id="rn-title">Release notes</h2>
+    <p class="explain">At every checkpoint each team's Writer agent drafts the "available now" section from its own memory.
+      Each line is checked against what is really live on each platform. STALE means the feature was live on that
+      platform earlier but isn't now, e.g. it was rolled back.</p>
+    <div class="rn" id="rn"></div>
+  </section>
+  <section class="panel" style="margin-bottom:14px">
+    <h2 id="qa-title">Checkpoint questions</h2>
+    <p class="explain">On each checkpoint day the judge generates questions from the hidden truth table: is each
+      feature available, is it on Android, how many distinct bugs are open, is it meeting its adoption target,
+      plus a release-notes task for the Writer. Support and Analyst both answer every question, so disagreements
+      inside a team count as contradictions. The truth column is never shown to agents.</p>
+    <div id="qa"></div>
+  </section>
+  <section class="panel" style="margin-bottom:14px">
     <h2>Finale: same question, three teams</h2>
     <div id="finale"></div>
   </section>
 </main>
 <footer>Agents never see the truth table. Truth is shown here only to grade the brain. Trap tags on events are for the audience.</footer>
 <div class="tooltip" id="tip"></div>
-<script src="data.js" onerror="console.warn('no data.js yet; run python -m product_brain run')"></script>
+<script src="runs/index.js" onerror="console.warn('no runs yet: python -m product_brain run')"></script>
 <script>
 const TEAMS = [
   { key: "brain", label: "Product Brain", color: "var(--brain)" },
@@ -178,23 +262,18 @@ const ACTION_COLOR = { conflict: "var(--warning)", rollback: "var(--critical)", 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
-let RUN = null, day = 0, timer = null;
+let RUN = null, day = 0, timer = null, runId = null;
+const INDEX = window.RUN_INDEX || [];
+const hashParam = k => (location.hash.match(new RegExp(`[#&]${k}=([^&]+)`)) || [])[1];
 
 function init(run) {
   RUN = run;
-  const h = location.hash.match(/day=(\d+)/);
-  day = h ? Math.min(+h[1], run.days.length - 1) : 0;
+  const h = hashParam("day");
+  day = h ? Math.min(+h, run.days.length - 1) : 0;
   const m = run.meta;
   $("meta").textContent = `${m.product} · seed ${m.seed} · ${m.days} days · ${m.events} events · ` +
     (m.mode === "mock" ? "mock mode (no LLM; pipeline test)" : `live: ${m.agent_model}`) + ` · extraction: ${m.extract}`;
   $("slider").max = m.days - 1;
-  $("tiles").innerHTML = TEAMS.map(t => {
-    const s = run.summary[t.key];
-    return `<div class="panel tile"><div class="label"><span class="swatch" style="background:${t.color}"></span>${t.label}</div>
-      <div class="hero">${pct(s.stale_rate)} <small>stale answers</small></div>
-      <div class="meta">accuracy ${pct(s.accuracy)} · contradictions ${pct(s.contradiction_rate)} · notes F1 ${s.notes_f1.toFixed(2)}
-        · ${s.tokens_per_task.toLocaleString()} tokens/task · memory ${s.final_memory_tokens.toLocaleString()} tokens</div></div>`;
-  }).join("");
   const legend = keys => TEAMS.filter(t => keys.includes(t.key))
     .map(t => `<span><span class="swatch" style="background:${t.color}"></span>${t.label}</span>`).join("");
   $("size-legend").innerHTML = legend(["brain", "naive"]);
@@ -212,6 +291,10 @@ function render() {
   renderCharts();
   renderTable();
   renderFinale();
+  renderTiles();
+  renderQA();
+  renderNotes();
+  renderAgents();
 }
 
 function renderCards(d, prev) {
@@ -324,6 +407,250 @@ function renderTable() {
   $("cp-table").innerHTML = h + "</table>";
 }
 
+// Scores computed from every checkpoint up to the current day, so the tiles move during playback.
+function scoreUpTo(d) {
+  const cps = RUN.days.filter(x => x.checkpoint && x.day <= d).map(x => x.checkpoint);
+  const out = {};
+  TEAMS.forEach(t => {
+    const all = cps.flatMap(c => c.answers[t.key]);
+    const qa = all.filter(a => a.type !== "release_notes"), notes = all.filter(a => a.type === "release_notes");
+    const byQ = {};
+    qa.forEach(a => (byQ[a.qid] ??= new Set()).add(JSON.stringify(a.answer)));
+    const pairs = Object.values(byQ);
+    const n = qa.length || 1;
+    out[t.key] = {
+      checkpoints: cps.length, questions: qa.length,
+      accuracy: qa.filter(a => a.correct).length / n, stale: qa.filter(a => a.stale).length / n,
+      unknown: qa.filter(a => a.abstain).length / n,
+      contradiction: pairs.filter(v => v.size > 1).length / (pairs.length || 1),
+      notes: notes.length ? notes.reduce((a, x) => a + x.f1, 0) / notes.length : null,
+      tokens: all.length ? Math.round(all.reduce((a, x) => a + x.tokens, 0) / all.length) : null,
+    };
+  });
+  return out;
+}
+
+function renderTiles() {
+  const cpDays = RUN.days.filter(x => x.checkpoint).map(x => x.day);
+  const done = cpDays.filter(x => x <= day).length;
+  const sizes = RUN.days[day].sizes;
+  if (!done) {
+    $("scope").textContent = `Scores appear at the first checkpoint (day ${cpDays[0]}). Checkpoints: days ${cpDays.join(", ")}.`;
+  } else {
+    $("scope").textContent = `Scores through day ${day}: ${done} of ${cpDays.length} checkpoints` +
+      (done === cpDays.length ? " (final)" : ` · next checkpoint on day ${cpDays.find(x => x > day)}`);
+  }
+  const sc = done ? scoreUpTo(day) : null;
+  $("tiles").innerHTML = TEAMS.map(t => {
+    const s = sc?.[t.key];
+    const mem = t.key === "no_memory" ? "no memory kept" : `memory ${sizes[t.key].toLocaleString()} tokens`;
+    return `<div class="panel tile"><div class="label"><span class="swatch" style="background:${t.color}"></span>${t.label}</div>
+      <div class="heroes"><div class="hero">${s ? pct(s.stale) : "–"} <small>stale answers</small></div>
+        <div class="hero">${s ? pct(s.accuracy) : "–"} <small>accurate</small></div></div>
+      <div class="meta">${s ? `${s.questions} answers · ${pct(s.unknown)} "unknown" · contradictions ${pct(s.contradiction)}` +
+        ` · notes F1 ${s.notes == null ? "–" : s.notes.toFixed(2)} · ${s.tokens.toLocaleString()} tokens/task · ` : ""}${mem}</div></div>`;
+  }).join("");
+}
+
+function badge(a) {
+  if (a.type === "release_notes") return `<span class="badge ${a.f1 === 1 ? "ok" : "bad"}">F1 ${a.f1.toFixed(2)}</span>` +
+    (a.stale_items ? `<span class="badge stale">${a.stale_items} STALE</span>` : "");
+  if (a.abstain) return `<span class="badge unk">?</span>`;
+  if (a.correct) return `<span class="badge ok">✓</span>`;
+  return a.stale ? `<span class="badge stale">STALE</span>` : `<span class="badge bad">✗</span>`;
+}
+const fmtVal = (type, v) => type === "adoption" && typeof v === "number" ? (v * 100).toFixed(1).replace(/\.0$/, "") + "%"
+  : String(v).replace(/_/g, " ");
+const fmtAns = (a, type) => Array.isArray(a)
+  ? (a.length ? a.map(f => `${f.name} (${f.platforms.map(p => PLAT[p] || p).join(", ")})`).join("; ") : "nothing")
+  : fmtVal(type, a);
+
+function renderQA() {
+  const cp = [...RUN.days].reverse().find(x => x.checkpoint && x.day <= day)?.checkpoint;
+  if (!cp) {
+    $("qa-title").textContent = "Checkpoint questions";
+    $("qa").innerHTML = `<div class="empty">No checkpoint yet. The first is on day ${RUN.days.find(x => x.checkpoint).day}.</div>`;
+    return;
+  }
+  $("qa-title").textContent = `Checkpoint questions, day ${cp.day}` + (cp.day === day ? "" : " (latest so far)");
+  const qids = [...new Set(cp.answers.brain.filter(a => a.type !== "release_notes").map(a => a.qid))];
+  const rows = qids.map(qid => {
+    const q = cp.answers.brain.find(a => a.qid === qid);
+    const cells = TEAMS.map(t => {
+      const as = cp.answers[t.key].filter(a => a.qid === qid);
+      const same = as.every(a => JSON.stringify(a.answer) === JSON.stringify(as[0].answer));
+      const body = same
+        ? `<span class="ans">${esc(fmtAns(as[0].answer, q.type))}</span>${badge(as[0])}`
+        : as.map(a => `<span class="split">${a.agent}: ${esc(fmtAns(a.answer, q.type))}${badge(a)}</span>`).join("");
+      const tip = as.map(a => `${a.agent} (${Math.round(a.confidence * 100)}%): ${a.reason}`).join("\n");
+      return `<td title="${esc(tip)}">${body}</td>`;
+    }).join("");
+    return `<tr><td>${esc(q.question)}</td><td>${esc(fmtVal(q.type, q.truth))}</td>${cells}</tr>`;
+  }).join("");
+  $("qa").innerHTML = `<div class="qa-wrap"><table class="qa"><colgroup><col class="q"><col class="t"><col><col><col></colgroup><tr><th>Question</th><th>Truth</th>` +
+    TEAMS.map(t => `<th><span class="swatch" style="background:${t.color}"></span> ${t.label}</th>`).join("") +
+    `</tr>${rows}</table></div><div class="empty" style="margin-top:6px">✓ correct · ✗ wrong · STALE wrong but true earlier, said with ≥60% confidence · ? said "unknown". Hover a cell for each agent's reasoning.</div>`;
+}
+
+const AGENTS = {
+  support: { title: "Support Agent", kind: "working agent",
+    role: "Answers customer questions about what the product can do today. Turns support tickets and team chat into claims for memory.",
+    reads: ["support tickets", "team chat", "announcements"] },
+  writer: { title: "Release Notes Writer", kind: "working agent",
+    role: "Writes the \"available now\" release notes at each checkpoint. Turns release logs and code changes into claims.",
+    reads: ["release log", "code changes", "announcements", "team chat"] },
+  analyst: { title: "Analyst", kind: "working agent",
+    role: "Answers questions about adoption and performance. Turns usage stats and roadmap targets into claims.",
+    reads: ["usage stats", "roadmap", "team chat"] },
+};
+const CURATOR_ROLE = "The only agent allowed to write to the Product Brain. Resolves conflicts by source authority (release log beats chat), " +
+  "links renamed features, merges duplicate bug reports, reopens regressions, marks stale entries and prunes to a size budget. " +
+  "Naive memory has no curator: every claim is appended.";
+const JUDGE_ROLE = "Knows the hidden truth table. At each checkpoint it writes questions with known answers, asks every team, " +
+  "and grades each answer as correct, wrong, stale (true earlier) or unknown. It also grades the release notes line by line.";
+// What the curator did with a proposal, keyed by its log action.
+const OUTCOME = { create: ["new entry", "var(--brain)"], update: ["applied", "var(--good)"], rollback: ["applied: rollback", "var(--good)"],
+  conflict: ["rejected", "var(--critical)"], rename: ["linked rename", "var(--brain)"], merge: ["merged entries", "var(--brain)"],
+  dedup: ["merged duplicate", "var(--ink-2)"], new_issue: ["new issue", "var(--brain)"], reopen: ["reopened issue", "var(--serious)"],
+  fix: ["closed issue", "var(--good)"], stale: ["dropped stale", "var(--serious)"] };
+const ACTION_LABEL = { conflict: "rejected", rollback: "rollbacks", update: "updates", create: "new entries", rename: "renames",
+  merge: "merges", dedup: "duplicates merged", new_issue: "new issues", reopen: "reopened", fix: "issues closed", stale: "stale dropped", prune: "prunes" };
+
+function outcomeOf(d, eventId) {
+  const acts = d.log.filter(l => l.event_id === eventId).map(l => l.action);
+  const a = acts.find(x => x === "conflict") || acts.find(x => x !== "create") || acts[0];
+  return a ? OUTCOME[a] || [a, "var(--ink-2)"] : ["no change", "var(--muted)"];
+}
+
+function renderAgents() {
+  const d = RUN.days[day];
+  $("agents-title").textContent = `Agents, day ${day}`;
+  if (!d.agents) {
+    const note = `<div class="empty">Activity wasn't recorded for this run (it predates activity logging). Pick a newer run to see what this agent did each day.</div>`;
+    const card = (title, kind, role, reads) => `<div class="agent"><h3>${title}<span class="kind">${kind}</span></h3>
+      <div class="role">${esc(role)}</div><div class="reads">Reads: ${reads.map(r => `<span class="src">${r}</span>`).join("")}</div>${note}</div>`;
+    $("agents").innerHTML = Object.values(AGENTS).map(a => card(a.title, a.kind, a.role, a.reads)).join("") +
+      card("Curator", "Product Brain only", CURATOR_ROLE, ["every agent's proposals"]) +
+      card("Judge", "referee, no team", JUDGE_ROLE, ["hidden truth table"]);
+    return;
+  }
+  const upto = RUN.days.slice(0, day + 1);
+  const cps = upto.filter(x => x.checkpoint).map(x => x.checkpoint);
+  const todayCp = d.checkpoint;
+  const statsFor = role => {
+    const rows = TEAMS.map(t => {
+      const all = cps.flatMap(c => c.answers[t.key]).filter(a => a.agent === role);
+      if (role === "writer") {
+        const last = all.at(-1);
+        return last ? last.f1.toFixed(2) : "–";
+      }
+      return all.length ? pct(all.filter(a => a.correct).length / all.length) : "–";
+    });
+    const label = role === "writer" ? "notes F1 (latest)" : "accuracy";
+    return `<div class="stats"><span></span>${TEAMS.map(t => `<span class="h"><span class="swatch" style="background:${t.color}"></span> ${{ brain: "Brain", naive: "Naive", no_memory: "None" }[t.key]}</span>`).join("")}
+      <span class="h">${label}</span>${rows.map(r => `<span>${r}</span>`).join("")}</div>`;
+  };
+  const working = Object.entries(AGENTS).map(([role, info]) => {
+    const a = d.agents[role];
+    const totals = upto.reduce((acc, x) => {
+      const ag = x.agents?.[role];
+      if (!ag) return acc;
+      acc.read += ag.read.length; acc.proposed += ag.proposals.length;
+      acc.rejected += ag.proposals.filter(p => outcomeOf(x, p.event_id)[0] === "rejected").length;
+      return acc;
+    }, { read: 0, proposed: 0, rejected: 0 });
+    const items = a.proposals.map(p => {
+      const [label, color] = outcomeOf(d, p.event_id);
+      return `<li><span>#${p.event_id} ${esc(p.summary)}</span><span class="out" style="color:${color}">${label}</span></li>`;
+    });
+    const shown = items.slice(0, 5).join(""), more = items.slice(5).join("");
+    const answered = todayCp ? todayCp.answers.brain.filter(x => x.agent === role).length : 0;
+    return `<div class="agent"><h3>${info.title}<span class="kind">${info.kind}</span></h3>
+      <div class="role">${esc(info.role)}</div>
+      <div class="reads">Reads: ${info.reads.map(r => `<span class="src">${r}</span>`).join("")}</div>
+      <h4>Today</h4>
+      <div class="line">Read ${a.read.length} event${a.read.length === 1 ? "" : "s"} · proposed ${a.proposals.length} claim${a.proposals.length === 1 ? "" : "s"}` +
+        (answered ? ` · answered ${answered} checkpoint ${role === "writer" ? "task" : "questions"} per team` : "") + `</div>
+      ${items.length ? `<ul>${shown}</ul>${more ? `<details><summary>${items.length - 5} more</summary><ul>${more}</ul></details>` : ""}` : ""}
+      <h4>So far</h4>
+      <div class="line">${totals.read} events read · ${totals.proposed} claims proposed · ${totals.rejected} rejected by the curator</div>
+      ${statsFor(role)}</div>`;
+  }).join("");
+
+  const counts = {}, today = {};
+  upto.forEach(x => x.log.forEach(l => counts[l.action] = (counts[l.action] || 0) + 1));
+  d.log.forEach(l => today[l.action] = (today[l.action] || 0) + 1);
+  const fmtCounts = c => Object.entries(c).map(([k, v]) => `${v} ${ACTION_LABEL[k] || k}`).join(" · ") || "nothing";
+  const proposedToday = Object.values(d.agents).reduce((a, x) => a + x.proposals.length, 0);
+  const curator = `<div class="agent"><h3>Curator<span class="kind">Product Brain only</span></h3>
+    <div class="role">${CURATOR_ROLE}</div>
+    <div class="reads">Reads: <span class="src">every agent's proposals</span></div>
+    <h4>Today</h4><div class="line">Reviewed ${proposedToday} proposals: ${fmtCounts(today)}</div>
+    <h4>So far</h4><div class="line">${fmtCounts(counts)}</div>
+    <div class="line">Brain size ${d.sizes.brain.toLocaleString()} tokens, vs naive memory ${d.sizes.naive.toLocaleString()}</div></div>`;
+
+  const cpDays = RUN.days.filter(x => x.checkpoint).map(x => x.day);
+  const asked = cps.reduce((a, c) => a + new Set(c.answers.brain.map(x => x.qid)).size, 0);
+  const next = cpDays.find(x => x > day);
+  const judge = `<div class="agent"><h3>Judge<span class="kind">referee, no team</span></h3>
+    <div class="role">${JUDGE_ROLE}</div>
+    <div class="reads">Reads: <span class="src">hidden truth table</span></div>
+    <h4>Today</h4><div class="line">${todayCp ? `Checkpoint: asked ${new Set(todayCp.answers.brain.map(x => x.qid)).size} questions and graded all three teams.`
+      : next != null ? `Waiting. Next checkpoint on day ${next}.` : "No more checkpoints."}</div>
+    <h4>So far</h4><div class="line">${cps.length} of ${cpDays.length} checkpoints · ${asked} questions asked per team</div></div>`;
+
+  $("agents").innerHTML = working + curator + judge;
+}
+
+function renderNotes() {
+  const cpDay = [...RUN.days].reverse().find(x => x.checkpoint && x.day <= day);
+  if (!cpDay) {
+    $("rn-title").textContent = "Release notes";
+    $("rn").innerHTML = `<div class="empty">The Writer drafts notes at each checkpoint. The first is on day ${RUN.days.find(x => x.checkpoint).day}.</div>`;
+    return;
+  }
+  const cp = cpDay.checkpoint;
+  $("rn-title").textContent = `Release notes, day ${cp.day}` + (cp.day === day ? "" : " (latest so far)");
+  const fidOf = {};
+  RUN.features.forEach(f => f.names.forEach(n => fidOf[n.toLowerCase()] = f.fid));
+  const nameOf = fid => cpDay.truth[fid].name;
+  const truth = new Set(cp.answers.brain.find(a => a.type === "release_notes").truth.map(([f, p]) => f + "|" + p));
+  const past = new Set();
+  RUN.days.filter(x => x.day < cp.day).forEach(x => Object.entries(x.truth).forEach(([fid, st]) =>
+    Object.entries(st.platforms).forEach(([p, v]) => v === "live" && past.add(fid + "|" + p))));
+  const group = keys => {
+    const g = {};
+    keys.forEach(k => { const [f, p] = k.split("|"); (g[f] ??= []).push(p); });
+    return g;
+  };
+  const plat = p => PLAT[p] || p;
+  const truthCol = `<div class="col truth"><h3>Actually live</h3><div class="f1">ground truth, never shown to agents</div><ul>` +
+    Object.entries(group([...truth])).map(([f, ps]) => `<li>${esc(nameOf(f))}<div class="plats">` +
+      ps.map(p => `<span class="chip">${plat(p)}</span>`).join("") + `</div></li>`).join("") + `</ul></div>`;
+  const teamCols = TEAMS.map(t => {
+    const a = cp.answers[t.key].find(x => x.type === "release_notes");
+    const covered = new Set();
+    const items = a.answer.map(f => {
+      const fid = fidOf[f.name.trim().toLowerCase()];
+      const chips = f.platforms.map(p => {
+        const k = fid + "|" + p;
+        covered.add(k);
+        const cls = fid && truth.has(k) ? "ok" : fid && past.has(k) ? "stale" : "bad";
+        const mark = cls === "ok" ? "✓" : cls === "stale" ? "STALE" : "✗";
+        return `<span class="chip ${cls}">${plat(p)} ${mark}</span>`;
+      }).join("");
+      return `<li>${esc(f.name)}${fid ? "" : ` <span class="chip bad">not a real feature</span>`}<div class="plats">${chips}</div></li>`;
+    }).join("");
+    const missing = Object.entries(group([...truth].filter(k => !covered.has(k))))
+      .map(([f, ps]) => `<b>${esc(nameOf(f))}</b> (${ps.map(plat).join(", ")})`).join(", ");
+    return `<div class="col"><h3><span class="swatch" style="background:${t.color}"></span>${t.label}</h3>
+      <div class="f1">F1 ${a.f1.toFixed(2)}${a.stale_items ? ` · ${a.stale_items} stale item${a.stale_items > 1 ? "s" : ""}` : ""}</div>
+      <ul>${items || `<li class="empty">listed nothing</li>`}</ul>
+      ${missing ? `<div class="missing">Missing: ${missing}</div>` : ""}</div>`;
+  }).join("");
+  $("rn").innerHTML = truthCol + teamCols;
+}
+
 function renderFinale() {
   const f = RUN.finale;
   if (!f) { $("finale").innerHTML = `<div class="empty">No finale question in this run.</div>`; return; }
@@ -334,7 +661,7 @@ function renderFinale() {
       const ok = a.correct, verdict = ok ? "✓ correct" : a.stale ? "✗ stale (used to be true)" : a.abstain ? "– doesn't know" : "✗ wrong";
       return `<div class="panel"><div class="label" style="display:flex;gap:8px;align-items:center;font-weight:600">
         <span class="swatch" style="background:${t.color}"></span>${t.label}</div>
-        <div class="ans">${esc(String(a.answer).toUpperCase())}</div>
+        <div class="ans">${esc(fmtVal(f.type, a.answer).toUpperCase())}</div>
         <div class="verdict" style="color:${ok ? "var(--good)" : "var(--critical)"}">${verdict}</div>
         <div class="reason">confidence ${Math.round(a.confidence * 100)}% · ${esc(a.reason)}</div></div>`;
     }).join("") + `</div>`;
@@ -360,7 +687,42 @@ addEventListener("keydown", e => {
   if (e.key === "ArrowLeft") { stop(); day = Math.max(day - 1, 0); render(); }
   if (e.key === " ") { e.preventDefault(); $("play").click(); }
 });
-if (window.RUN) init(window.RUN);
+function renderRuns() {
+  $("runs-count").textContent = INDEX.length ? `${INDEX.length} run${INDEX.length > 1 ? "s" : ""} · click a row to open it` : "";
+  $("run-picker").innerHTML = INDEX.map(r => `<option value="${esc(r.id)}">${esc(r.label)}</option>`).join("");
+  $("run-picker").value = runId;
+  const head = TEAMS.map(t => `<th colspan="2"><span class="swatch" style="background:${t.color}"></span> ${t.label}</th>`).join("");
+  const sub = TEAMS.map(() => "<th>Stale</th><th>Accuracy</th>").join("");
+  $("runs-table").innerHTML = `<div class="scroll"><table><tr><th>Run</th><th>Product</th>${head}</tr><tr><th></th><th></th>${sub}</tr>` +
+    INDEX.map(r => `<tr class="pick ${r.id === runId ? "current" : ""} ${r.mode === "mock" ? "mock" : ""}" data-id="${esc(r.id)}">
+      <td>${esc(r.label)}${r.mode === "mock" ? " (pipeline test)" : ""}</td><td>${esc(r.product)}</td>` +
+      TEAMS.map(t => `<td>${pct(r.summary[t.key].stale_rate)}</td><td>${pct(r.summary[t.key].accuracy)}</td>`).join("") + "</tr>").join("") +
+    "</table></div>";
+  $("runs-table").querySelectorAll("tr.pick").forEach(tr => tr.onclick = () => loadRun(tr.dataset.id));
+}
+
+function loadRun(id, startDay) {
+  stop();
+  runId = id;
+  history.replaceState(null, "", `#run=${encodeURIComponent(id)}` + (startDay ? `&day=${startDay}` : ""));
+  renderRuns();
+  if (window.RUNS?.[id]) return init(window.RUNS[id]);
+  const s = document.createElement("script");
+  s.src = `runs/${encodeURIComponent(id)}.js`;
+  s.onload = () => runId === id && init(window.RUNS[id]);
+  s.onerror = () => $("meta").textContent = `Could not load run ${id}. Run python -m product_brain viewer to republish.`;
+  document.head.appendChild(s);
+}
+
+$("run-picker").onchange = e => loadRun(e.target.value);
+if (INDEX.length) {
+  const wanted = decodeURIComponent(hashParam("run") || "");
+  const pick = INDEX.find(r => r.id === wanted) || INDEX.find(r => r.mode === "live") || INDEX[0];
+  loadRun(pick.id, hashParam("day"));
+} else {
+  $("runs-panel").hidden = true;
+  $("run-picker").hidden = true;
+}
 </script>
 </body>
 </html>

@@ -12,9 +12,10 @@ from . import judge
 from .agents import ROLES, Agent
 from .brain import ProductBrain
 from .curator import Curator
-from .events import World, generate
+from .events import VISIBLE_TO, World, generate
 from .llm import LLM, Settings
-from .memory import NaiveMemory, NoMemory
+from .memory import NaiveMemory, NoMemory, claim_summary
+from .viewer_export import export_runs
 
 TEAMS = ("no_memory", "naive", "brain")
 
@@ -86,7 +87,11 @@ async def run(seed: int = 7, days: int = 21, mode: str = "mock", extract: str = 
         curator_log = await teams["brain"].ingest(day, proposals)
         db.commit()
 
-        rec = {"day": day, "events": [dict(e.public(), trap=e.trap) for e in evs],
+        activity = {role: {"read": [e.id for e in evs if e.type in VISIBLE_TO[role]], "tokens": tokens,
+                           "proposals": [{"event_id": p["event_id"], "kind": p["kind"], "summary": claim_summary(p)}
+                                         for p in ps]}
+                    for role, (ps, tokens) in zip(ROLES, results)}
+        rec = {"day": day, "events": [dict(e.public(), trap=e.trap) for e in evs], "agents": activity,
                "truth": world.truth[day], "log": curator_log, "proposals": len(proposals),
                "sizes": {t: teams[t].size_tokens() for t in TEAMS}, "naive_notes": teams["naive"].count()}
         cards = teams["brain"].cards()
@@ -125,9 +130,8 @@ async def run(seed: int = 7, days: int = 21, mode: str = "mock", extract: str = 
     (out / "run.json").write_text(json.dumps(result, indent=1, default=str))
     log(f"wrote {out / 'run.json'}")
     if write_viewer:
-        viewer = Path(__file__).resolve().parent.parent / "viewer" / "data.js"
-        viewer.write_text("window.RUN = " + json.dumps(result, default=str) + ";\n")
-        log(f"wrote {viewer} (open viewer/index.html)")
+        export_runs(out_root)
+        log("published to the viewer: open viewer/index.html")
     return result
 
 
@@ -153,9 +157,19 @@ async def _checkpoint(world, day, rng, teams, agents, db, all_answers, finale):
         db.execute("INSERT INTO metrics VALUES (?,?,?)", (t, day, json.dumps(scores[t])))
 
     fin = None
-    fq = next((q for q in qs if q.get("finale")), None)
-    if fq:
-        fin = {"day": day, "question": fq["text"], "truth": fq["truth"],
-               "answers": {t: next(r for r in per_team[t] if r["qid"] == fq["qid"] and r["agent"] == "support")
-                           for t in TEAMS}}
+    if finale:
+        support = {t: {r["qid"]: r for r in per_team[t] if r["agent"] == "support"} for t in TEAMS}
+
+        def drama(q):
+            """How well this question shows the difference: brain right, naive confidently stale."""
+            b, n, x = (support[t].get(q["qid"]) for t in TEAMS[::-1])
+            if not (b and n and x):
+                return -1
+            return (3 * b["correct"] + 2 * n["stale"] + (not n["correct"] and not n["abstain"])
+                    + (not x["correct"]) + 0.5 * bool(q.get("finale")))
+
+        fq = max((q for q in qs if q["type"] != "release_notes"), key=drama, default=None)
+        if fq:
+            fin = {"day": day, "question": fq["text"], "truth": fq["truth"], "type": fq["type"],
+                   "answers": {t: support[t][fq["qid"]] for t in TEAMS}}
     return {"day": day, "teams": scores, "answers": per_team}, fin

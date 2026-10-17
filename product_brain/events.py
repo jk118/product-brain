@@ -15,7 +15,8 @@ from dataclasses import dataclass, field
 PLATFORMS = ("ios", "android", "web")
 PLATFORM_LABEL = {"ios": "iOS", "android": "Android", "web": "Web"}
 STATUSES = ("planned", "beta", "live", "pulled")
-TRAPS = ("rollback", "rename_split", "platform_split", "rumor", "data_vs_assumption", "duplicates")
+TRAPS = ("rollback", "rename_split", "platform_split", "rumor", "data_vs_assumption", "duplicates",
+         "partial_rollback")
 
 # Which event types each agent role sees. Team chat is visible to everyone.
 VISIBLE_TO = {
@@ -242,6 +243,12 @@ class _Gen:
                   claims=[c_status(f.name, "live")], fid=f.fid, trap="rollback")
         self.emit(live + 5, "support_ticket", self.customer(), f"Where did {f.name} go? It was there last week.",
                   fid=f.fid, trap="rollback")
+        # Relaunch: "not available" goes stale.
+        back = live + 2 + self.rng.randint(6, 8)
+        self.release(back, f, f.name, "live", PLATFORMS,
+                     f"{{ver}}: {f.name} is back. The data-loss bug is fixed and it is generally available on "
+                     f"iOS, Android and Web again.",
+                     announce=f"{f.name} is back! Thanks for your patience.", trap="relaunch")
 
     def rename_split(self, f):
         old, new = f.name, f.rename_to
@@ -317,7 +324,15 @@ class _Gen:
         self.emit(live + 5, "roadmap", self.pick(PMS),
                   f"Roadmap check-in: still planning around {f.name} hitting {target:.0%} adoption.",
                   claims=[c_target(f.name, target)], fid=f.fid, trap="data_vs_assumption")
-        f.adoption = ("flat", self.rng.uniform(0.05, 0.1))
+        level = self.rng.uniform(0.06, 0.1)
+        f.adoption = ("flat", level)
+        # Target revision: "below target" goes stale once the PM resets expectations.
+        revised = round(level - 0.03, 2)
+        self.emit(live + 8, "roadmap", self.pick(PMS),
+                  f"Revised target for {f.name}: {revised:.0%} weekly adoption, based on real usage. "
+                  f"The original {target:.0%} was too optimistic.",
+                  claims=[c_target(f.name, revised)], truth=[("target", f.fid, revised)], fid=f.fid,
+                  trap="target_revision")
 
     def duplicates(self, f):
         self.intro(f, 0)
@@ -336,9 +351,34 @@ class _Gen:
         self.emit(k + 2, "support_ticket", self.customer(), text, claims=[c_issue(f.name, text)],
                   truth=[("issue", f.fid, "timezone", "open")], fid=f.fid, trap="duplicates")
         text = f"Fixed a crash when exporting large documents from {f.name}."
-        self.emit(min(k + 8, self.days - 2), "release_log", RELEASE_BOT, f"{{ver}}: {text}",
+        fix = min(k + 8, self.days - 2)
+        self.emit(fix, "release_log", RELEASE_BOT, f"{{ver}}: {text}",
                   claims=[c_fixed(f.name, text)], truth=[("issue", f.fid, "export-crash", "fixed")],
                   fid=f.fid, trap="duplicates")
+        # Regression: the fixed bug comes back, so "1 open bug" goes stale.
+        text = f"{f.name} is crashing on export again after the last update. Large documents still kill the app."
+        self.emit(fix + 3, "support_ticket", self.customer(), text, claims=[c_issue(f.name, text)],
+                  truth=[("issue", f.fid, "export-crash", "open")], fid=f.fid, trap="regression")
+        text = f"Known issue: the large-document export crash in {f.name} has regressed. Fix in progress."
+        self.emit(fix + 3, "release_log", RELEASE_BOT, f"{{ver}}: {text}", claims=[c_issue(f.name, text)],
+                  fid=f.fid, trap="regression", minute=17 * 60)
+
+    def partial_rollback(self, f):
+        self.intro(f, self.rng.randint(0, 2))
+        b = self.rng.randint(1, 3)
+        self.release(b, f, f.name, "beta", PLATFORMS, f"{{ver}}: {f.name} enters beta on iOS, Android and Web.")
+        live = max(self.span(0.2, 0.3), b + 2)
+        self.release(live, f, f.name, "live", PLATFORMS,
+                     f"{{ver}}: {f.name} is generally available on iOS, Android and Web.",
+                     announce=f"{f.name} is now available everywhere!", cheer=f"{f.name} is out 🎉")
+        pull = live + self.rng.randint(3, 4)
+        self.release(pull, f, f.name, "pulled", ("android",),
+                     f"{{ver}}: {f.name} disabled on Android after crash reports on Android 15. "
+                     f"iOS and Web are unaffected.", trap="partial_rollback")
+        self.emit(pull + 1, "support_ticket", self.customer(), f"{f.name} vanished from my Android app??",
+                  fid=f.fid, trap="partial_rollback")
+        self.emit(pull + 2, "chat", self.pick(TEAM), f"{f.name} working great on my Pixel today, love it",
+                  claims=[c_status(f.name, "live", ("android",))], fid=f.fid, trap="partial_rollback")
 
     def noise(self):
         for d in range(self.days):

@@ -35,6 +35,7 @@ class Settings:
     agent_model: str
     curator_model: str
     concurrency: int = 8
+    rpm: int = 25
     max_tokens: int = 1024
     timeout: float = 90.0
     thinking: bool = False
@@ -50,6 +51,7 @@ class Settings:
             agent_model=agent,
             curator_model=env("CURATOR_MODEL", "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B"),
             concurrency=int(env("LLM_CONCURRENCY", "4")),
+            rpm=int(env("LLM_RPM", "25")),
             max_tokens=int(env("LLM_MAX_TOKENS", "1024")),
             thinking=env("LLM_THINKING", "false").lower() in ("1", "true", "yes"),
         )
@@ -75,6 +77,8 @@ class LLM:
     def __init__(self, settings: Settings, model: str, mock: bool = False):
         self.settings, self.model, self.mock = settings, model, mock
         self._sem = asyncio.Semaphore(settings.concurrency)
+        self._pace = asyncio.Lock()  # spaces request starts so we stay under the per-model RPM limit
+        self._next_slot = 0.0
         self.calls = 0
         self.prompt_tokens = 0
         self.completion_tokens = 0
@@ -96,6 +100,7 @@ class LLM:
             "chat_template_kwargs": {"enable_thinking": self.settings.thinking},
         }
         async with self._sem:
+            await self._wait_for_slot()
             data = await asyncio.to_thread(self._post, body)
         usage = data.get("usage") or {}
         p = usage.get("prompt_tokens") or estimate_tokens(system + user)
@@ -104,11 +109,19 @@ class LLM:
         self.completion_tokens += c
         return data["choices"][0]["message"].get("content") or "", p + c
 
+    async def _wait_for_slot(self):
+        async with self._pace:
+            now = time.monotonic()
+            wait = self._next_slot - now
+            self._next_slot = max(now, self._next_slot) + 60.0 / max(1, self.settings.rpm)
+        if wait > 0:
+            await asyncio.sleep(wait)
+
     def _post(self, body: dict) -> dict:
         url = self.settings.base_url.rstrip("/") + "/chat/completions"
         req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST", headers={
             "Authorization": f"Bearer {self.settings.api_key}", "Content-Type": "application/json"})
-        tries = 8  # without a payment method Crusoe allows only 30 requests/min per model
+        tries = 10  # without a payment method Crusoe allows only 30 requests/min per model
         for attempt in range(tries):
             try:
                 with urllib.request.urlopen(req, timeout=self.settings.timeout) as resp:

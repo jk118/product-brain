@@ -1,4 +1,4 @@
-"""CLI: python -m product_brain run | events | viewer"""
+"""CLI: python -m product_brain run | events | viewer | serve"""
 from __future__ import annotations
 
 import argparse
@@ -26,10 +26,17 @@ def main():
     e.add_argument("--seed", type=int, default=7)
     e.add_argument("--days", type=int, default=21)
     e.add_argument("--traps", action="store_true", help="annotate trap events (never shown to agents)")
-    v = sub.add_parser("viewer", help="publish all runs to the viewer and open it")
+    sv = sub.add_parser("serve", help="serve the office UI on localhost")
+    sv.add_argument("--port", type=int, default=8000)
+    sv.add_argument("--out", default="runs")
+    v = sub.add_parser("viewer", help="publish all runs to the classic viewer and open it")
     v.add_argument("--out", default="runs")
     v.add_argument("--no-open", action="store_true")
     args = ap.parse_args()
+
+    if args.cmd == "serve":
+        from .server import serve
+        return serve(args.port, args.out)
 
     if args.cmd == "viewer":
         index = export_runs(args.out)

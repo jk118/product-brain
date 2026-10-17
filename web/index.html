@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product Brain Office</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <div><b>Product Brain</b><span id="meta" class="meta">Loading…</span></div>
+    </div>
+    <div class="controls">
+      <select id="run" aria-label="Run"></select>
+      <button id="play" class="play" aria-label="Play">▶</button>
+      <div class="clock"><b id="dayl">Day 0</b><span id="phase"></span></div>
+      <input type="range" id="slider" min="0" max="0" value="0" aria-label="Simulated day">
+      <select id="speed" aria-label="Playback speed">
+        <option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option>
+      </select>
+    </div>
+  </header>
+
+  <main class="stage">
+    <section class="map" aria-label="Office">
+      <svg id="office" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="overlay strip" id="strip"></div>
+      <div class="overlay toast" id="toast" role="status"></div>
+      <div class="overlay hint">Click a character to see what it's doing · ← → step days · space plays</div>
+      <div class="overlay empty" id="empty" hidden>No runs yet. Run <code>python -m product_brain run</code>, then reload.</div>
+    </section>
+
+    <aside class="side">
+      <nav class="tabs" role="tablist">
+        <button data-tab="feed" class="active">Feed</button>
+        <button data-tab="agent">Agents</button>
+        <button data-tab="scores">Scores</button>
+        <button data-tab="brain">Brain</button>
+        <button data-tab="checkpoint">Questions</button>
+        <button data-tab="notes">Notes</button>
+      </nav>
+      <div class="tabbody" id="tab-feed"></div>
+      <div class="tabbody" id="tab-agent" hidden></div>
+      <div class="tabbody" id="tab-scores" hidden></div>
+      <div class="tabbody" id="tab-brain" hidden></div>
+      <div class="tabbody" id="tab-checkpoint" hidden></div>
+      <div class="tabbody" id="tab-notes" hidden></div>
+    </aside>
+  </main>
+</div>
+<div class="tip" id="tip"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,5 +1,97 @@
 window.RUN_INDEX = [
  {
+  "id": "seed11-live-oracle",
+  "label": "seed 11 \u00b7 21d \u00b7 Nemotron-3.5-Lightning-30B-A3B \u00b7 oracle extraction",
+  "mode": "live",
+  "seed": 11,
+  "days": 21,
+  "extract": "oracle",
+  "product": "Driftnote",
+  "agent_model": "nvidia/Nemotron-3.5-Lightning-30B-A3B",
+  "updated": 1792279063.2017443,
+  "summary": {
+   "no_memory": {
+    "questions": 174,
+    "accuracy": 0.46,
+    "stale_rate": 0.19,
+    "abstain_rate": 0.264,
+    "contradiction_rate": 0.552,
+    "notes_f1": 0.56,
+    "notes_stale_items": 3,
+    "tokens_per_task": 1420,
+    "final_memory_tokens": 0
+   },
+   "naive": {
+    "questions": 174,
+    "accuracy": 0.753,
+    "stale_rate": 0.052,
+    "abstain_rate": 0.011,
+    "contradiction_rate": 0.046,
+    "notes_f1": 0.805,
+    "notes_stale_items": 9,
+    "tokens_per_task": 3563,
+    "final_memory_tokens": 4570
+   },
+   "brain": {
+    "questions": 174,
+    "accuracy": 0.994,
+    "stale_rate": 0.0,
+    "abstain_rate": 0.006,
+    "contradiction_rate": 0.011,
+    "notes_f1": 0.982,
+    "notes_stale_items": 0,
+    "tokens_per_task": 1653,
+    "final_memory_tokens": 1011
+   }
+  }
+ },
+ {
+  "id": "seed7-live-oracle",
+  "label": "seed 7 \u00b7 21d \u00b7 Nemotron-3.5-Lightning-30B-A3B \u00b7 oracle extraction",
+  "mode": "live",
+  "seed": 7,
+  "days": 21,
+  "extract": "oracle",
+  "product": "Pinwheel",
+  "agent_model": "nvidia/Nemotron-3.5-Lightning-30B-A3B",
+  "updated": 1792277627.96318,
+  "summary": {
+   "no_memory": {
+    "questions": 172,
+    "accuracy": 0.407,
+    "stale_rate": 0.221,
+    "abstain_rate": 0.262,
+    "contradiction_rate": 0.721,
+    "notes_f1": 0.378,
+    "notes_stale_items": 0,
+    "tokens_per_task": 1409,
+    "final_memory_tokens": 0
+   },
+   "naive": {
+    "questions": 172,
+    "accuracy": 0.727,
+    "stale_rate": 0.064,
+    "abstain_rate": 0.012,
+    "contradiction_rate": 0.047,
+    "notes_f1": 0.739,
+    "notes_stale_items": 13,
+    "tokens_per_task": 3470,
+    "final_memory_tokens": 4263
+   },
+   "brain": {
+    "questions": 172,
+    "accuracy": 0.988,
+    "stale_rate": 0.012,
+    "abstain_rate": 0.0,
+    "contradiction_rate": 0.023,
+    "notes_f1": 1.0,
+    "notes_stale_items": 0,
+    "tokens_per_task": 1693,
+    "final_memory_tokens": 1009
+   }
+  }
+ },
+ {
   "id": "seed7-mock-oracle",
   "label": "seed 7 \u00b7 21d \u00b7 mock \u00b7 oracle extraction",
   "mode": "mock",
@@ -88,52 +180,6 @@ window.RUN_INDEX = [
     "notes_stale_items": 0,
     "tokens_per_task": 1291,
     "final_memory_tokens": 719
-   }
-  }
- },
- {
-  "id": "seed7-live-oracle",
-  "label": "seed 7 \u00b7 21d \u00b7 Nemotron-3.5-Lightning-30B-A3B \u00b7 oracle extraction",
-  "mode": "live",
-  "seed": 7,
-  "days": 21,
-  "extract": "oracle",
-  "product": "Pinwheel",
-  "agent_model": "nvidia/Nemotron-3.5-Lightning-30B-A3B",
-  "updated": 1792274034.3102925,
-  "summary": {
-   "no_memory": {
-    "questions": 114,
-    "accuracy": 0.351,
-    "stale_rate": 0.211,
-    "abstain_rate": 0.351,
-    "contradiction_rate": 0.632,
-    "notes_f1": 0.237,
-    "notes_stale_items": 3,
-    "tokens_per_task": 1342,
-    "final_memory_tokens": 0
-   },
-   "naive": {
-    "questions": 114,
-    "accuracy": 0.658,
-    "stale_rate": 0.053,
-    "abstain_rate": 0.035,
-    "contradiction_rate": 0.053,
-    "notes_f1": 0.684,
-    "notes_stale_items": 12,
-    "tokens_per_task": 2981,
-    "final_memory_tokens": 3586
-   },
-   "brain": {
-    "questions": 114,
-    "accuracy": 0.947,
-    "stale_rate": 0.026,
-    "abstain_rate": 0.0,
-    "contradiction_rate": 0.053,
-    "notes_f1": 0.82,
-    "notes_stale_items": 0,
-    "tokens_per_task": 1348,
-    "final_memory_tokens": 713
    }
   }
  }

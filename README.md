@@ -73,7 +73,24 @@ python -m unittest discover -s tests
 Outputs go to `runs/seed<N>-<mode>-<extract>/`: `run.json`, plus `product_brain.db` (SQLite with events,
 truth, the naive notes, all brain tables, the curator log, every graded answer and the metrics).
 
-### Viewer
+### Office UI (main front end)
+
+```bash
+python -m product_brain serve        # then open http://localhost:8000
+```
+
+A 2D office where each agent is a character. Each simulated day plays out on the map:
+1. Mail arrives at the inbox.
+2. Agents read it and say what they found.
+3. They carry their claims to the Curator at the Product Brain vault, which approves or rejects each one.
+4. Copies pile up on the naive notes wall.
+5. On checkpoint days, everyone crosses the bridge to the arena to be graded.
+
+The side panel has tabs for the event feed, agent profiles, scores and charts, what the brain believes, the
+judge's questions, and release notes. Click a character to open its profile. `#run=<id>&day=<n>&play=1`
+links straight to a moment, with autoplay. Plain HTML, CSS and JS in `web/`, served by the standard library: no build step.
+
+### Classic viewer
 
 Every run is published to `viewer/runs/` automatically. `python -m product_brain viewer` republishes all
 runs and opens the page (no server or build step needed). Pick a run from the dropdown, or open

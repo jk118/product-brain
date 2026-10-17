@@ -1,5 +1,51 @@
 window.RUN_INDEX = [
  {
+  "id": "seed7-live-oracle-agentic",
+  "label": "seed 7 \u00b7 21d \u00b7 Nemotron-3.5-Lightning-30B-A3B \u00b7 oracle extraction \u00b7 agentic",
+  "mode": "live",
+  "seed": 7,
+  "days": 21,
+  "extract": "oracle",
+  "product": "Pinwheel",
+  "agent_model": "nvidia/Nemotron-3.5-Lightning-30B-A3B",
+  "updated": 1792278037.9964497,
+  "summary": {
+   "no_memory": {
+    "questions": 114,
+    "accuracy": 0.114,
+    "stale_rate": 0.018,
+    "abstain_rate": 0.842,
+    "contradiction_rate": 0.228,
+    "notes_f1": 0.0,
+    "notes_stale_items": 0,
+    "tokens_per_task": 4920,
+    "final_memory_tokens": 0
+   },
+   "naive": {
+    "questions": 114,
+    "accuracy": 0.246,
+    "stale_rate": 0.0,
+    "abstain_rate": 0.719,
+    "contradiction_rate": 0.211,
+    "notes_f1": 0.0,
+    "notes_stale_items": 0,
+    "tokens_per_task": 8528,
+    "final_memory_tokens": 3607
+   },
+   "brain": {
+    "questions": 114,
+    "accuracy": 0.86,
+    "stale_rate": 0.0,
+    "abstain_rate": 0.14,
+    "contradiction_rate": 0.105,
+    "notes_f1": 0.0,
+    "notes_stale_items": 0,
+    "tokens_per_task": 4960,
+    "final_memory_tokens": 713
+   }
+  }
+ },
+ {
   "id": "seed7-mock-oracle",
   "label": "seed 7 \u00b7 21d \u00b7 mock \u00b7 oracle extraction",
   "mode": "mock",

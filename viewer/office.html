@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product Brain Tower</title>
+<style>
+:root { --green: #76b900; --ink: #e8efe0; --line: #263020; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: #05070a; color: var(--ink); font: 13px/1.4 ui-monospace, Menlo, Consolas, monospace; overflow: hidden; }
+body { display: flex; align-items: center; justify-content: center; }
+.stage { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; background: #05070a; }
+.hud { position: absolute; top: 1.2%; right: 1.2%; display: flex; gap: 6px; align-items: center; z-index: 2; }
+.hud button, .hud select { background: rgba(10,13,9,.82); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; font: inherit; font-size: 12px; cursor: pointer; }
+.hud button:hover, .hud select:hover { border-color: var(--green); }
+.hud button.go { background: var(--green); color: #05070a; border-color: var(--green); font-weight: 700; }
+.hud input { width: 90px; accent-color: var(--green); }
+.hud select { max-width: 120px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <canvas id="c" width="640" height="360"></canvas>
+  <div class="hud">
+    <select id="run" aria-label="Run"></select>
+    <button id="play" class="go">Play</button>
+    <button id="speedBtn">1x</button>
+    <input id="scrub" type="range" min="0" max="20" value="0" aria-label="Day">
+  </div>
+</div>
+
+<script src="runs/index.js" onerror="console.warn('no runs index')"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const cv = $("c"), ctx = cv.getContext("2d");
+const W = 640, H = 360;
+let SX = 1, SY = 1;
+function fitCanvas() {
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.max(320, Math.round(r.width * dpr)); cv.height = Math.max(180, Math.round(r.height * dpr));
+  SX = cv.width / W; SY = cv.height / H;
+}
+new ResizeObserver(fitCanvas).observe(cv); fitCanvas();
+const FONT = '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+const GREEN = "#76b900", AMBER = "#f5a623", RED = "#ff5a5f", BLUE = "#4aa3ff", PURPLE = "#b48cff", TEAL = "#38c9d6", GREY = "#6b7480";
+const STATUS_COLOR = { live: GREEN, beta: AMBER, pulled: RED, planned: GREY };
+const TYPE_COLOR = { release_log: GREEN, chat: "#9fb0c8", support_ticket: "#ff7a7a", usage_stats: TEAL,
+  announcement: PURPLE, code_change: "#e6d24a", roadmap: "#ff9f43" };
+const TYPE_NAME = { release_log: "release log", chat: "chat", support_ticket: "ticket", usage_stats: "usage stats",
+  announcement: "announcement", code_change: "code change", roadmap: "roadmap" };
+const ROUTE = { chat: "support", support_ticket: "support", release_log: "writer", announcement: "writer",
+  code_change: "writer", roadmap: "analyst", usage_stats: "analyst" };
+
+/* ---------- geometry ---------- */
+const FLOORS = [
+  { key: "brain", name: "PRODUCT BRAIN", color: GREEN },
+  { key: "naive", name: "NAIVE MEMORY", color: BLUE },
+  { key: "no_memory", name: "NO MEMORY", color: "#9aa3ad" },
+];
+const FL_TOP = i => 24 + i * 100, FL_GROUND = i => FL_TOP(i) + 94, RAIL_Y = i => FL_TOP(i) + 20;
+const X0 = 40, DESK_X = { support: 105, writer: 165, analyst: 225 };
+const CUR_X = 335, VER_X = 405, CAB_X = 438, PILE_X = 360, BOARD_X = 335, COUNTER_X = 600, CUST_X = 576;
+
+/* ---------- state ---------- */
+let RUN = null, day = 0, playing = false, token = 0, speed = 1;
+const state = {
+  wall: [], flash: {}, naiveTarget: 0, naiveShown: 0, naiveMax: 1, memTokens: { brain: 0, naive: 0, no_memory: 0 },
+  board: [], falling: [], gauge: { brain: null, naive: null, no_memory: null }, cpDays: [],
+  siren: 0, shake: 0, banner: null, narr: { who: "", text: "", t0: 0 },
+};
+const caps = [], floaters = [];
+class Cancel extends Error {}
+const sleep = ms => new Promise((res, rej) => { const t = token; setTimeout(() => (t === token ? res() : rej(new Cancel())), ms / speed); });
+const now = () => performance.now();
+
+/* ---------- people ---------- */
+const PAL = {
+  support: { body: BLUE, hair: "#5a3b22", skin: "#f2c9a0" }, writer: { body: PURPLE, hair: "#c9a227", skin: "#e8b88a" },
+  analyst: { body: "#ff9f43", hair: "#161616", skin: "#c98f62" }, curator: { body: "#e8efe0", hair: "#7a4b2a", skin: "#f2c9a0" },
+  verifier: { body: TEAL, hair: "#222", skin: "#d9a577" },
+};
+const NAMES = { support: "Support", writer: "Writer", analyst: "Analyst", curator: "Curator", verifier: "Verifier" };
+function person(role, floor, x) {
+  return { role, floor, x, hx: x, tx: null, done: null, bubble: null, until: 0, walk: 0, carry: false, mood: null, moodUntil: 0, pal: PAL[role] };
+}
+const folks = [];   // all staff
+const staff = {};   // staff[floorKey][role]
+FLOORS.forEach((f, i) => {
+  staff[f.key] = {};
+  const roles = ["support", "writer", "analyst"].concat(f.key === "brain" ? ["curator", "verifier"] : []);
+  for (const r of roles) {
+    const x = r === "curator" ? CUR_X : r === "verifier" ? VER_X : DESK_X[r];
+    const p = person(r, i, x); staff[f.key][r] = p; folks.push(p);
+  }
+});
+const customers = FLOORS.map((f, i) => ({ floor: i, x: W + 20, on: false, hue: ["#c0392b", "#8e44ad", "#16a085"][i], mood: null, moodUntil: 0, bubble: null, until: 0, walk: 0, tx: null, done: null }));
+
+function say(p, text, ms = 2200, color) { p.bubble = { text, color }; p.until = now() + ms / speed; }
+function moveX(p, x) {
+  return new Promise((res, rej) => { const t = token; p.tx = x; p.done = () => (t === token ? res() : rej(new Cancel())); });
+}
+function emote(p, kind, ms = 1600) { p.mood = kind; p.moodUntil = now() + ms / speed; }
+
+/* ---------- drawing primitives ---------- */
+const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+function RR(x, y, w, h, r, c) { ctx.fillStyle = c; ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); }
+function T(s, x, y, c = "#e8efe0", size = 8, align = "left", weight = 700) {
+  ctx.font = `${weight} ${size}px ${FONT}`; ctx.fillStyle = c; ctx.textAlign = align; ctx.textBaseline = "alphabetic";
+  ctx.fillText(s, x, y);
+}
+const clip = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + "…" : String(s));
+function wrapText(text, maxW, size = 8) {
+  ctx.font = `700 ${size}px ${FONT}`;
+  const out = []; let line = "";
+  for (const w of String(text).split(/\s+/)) {
+    const t = line ? line + " " + w : w;
+    if (ctx.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t;
+  }
+  if (line) out.push(line); return out;
+}
+
+function drawPerson(p, groundY, extra = {}) {
+  const moving = p.tx != null, sw = moving ? Math.sin(p.walk) : 0, bob = moving ? Math.abs(sw) * 1.2 : Math.sin(now() / 500 + p.x) * 0.3;
+  const pal = extra.pal || p.pal, K = 1.55;
+  ctx.save(); ctx.translate(p.x, groundY); ctx.scale(K, K);
+  ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(0, 0, 6.5, 1.8, 0, 0, 7); ctx.fill();
+  // legs
+  RR(-3.4, -8.5 + Math.max(0, -sw) * 1, 2.8, 8.5 - Math.max(0, -sw) * 1, 1.2, "#262a36"); RR(0.6, -8.5 + Math.max(0, sw) * 1, 2.8, 8.5 - Math.max(0, sw) * 1, 1.2, "#262a36");
+  ctx.save(); ctx.translate(0, -bob);
+  // arms
+  ctx.save(); ctx.translate(-5.2, -16); ctx.rotate(moving ? sw * 0.5 : 0.05); RR(-1.3, 0, 2.6, 8, 1.3, pal.body); ctx.restore();
+  ctx.save(); ctx.translate(5.2, -16); ctx.rotate(moving ? -sw * 0.5 : -0.05); RR(-1.3, 0, 2.6, 8, 1.3, pal.body); ctx.restore();
+  // torso
+  RR(-5, -17.5, 10, 11, 3, pal.body);
+  if (p.role === "curator") { RR(-5, -17.5, 10, 11, 3, "#f1f5ec"); ctx.fillStyle = "#c9d1c0"; ctx.fillRect(-0.4, -16.5, 0.8, 9); RR(-3.4, -12.5, 2.2, 2, .6, "#9aa590"); }
+  if (p.role === "writer") RR(4.2, -12, 2.4, 6, 1, "#fff");
+  if (p.role === "analyst") { RR(4.4, -13.5, 5, 7, 1, "#fff"); R(5.4, -10.5, 3, .7, "#ff9f43"); R(5.4, -8.6, 2, .7, "#ff9f43"); }
+  if (p.role === "verifier") { ctx.strokeStyle = "#f1f5ec"; ctx.lineWidth = .9; ctx.beginPath(); ctx.arc(8, -10, 2.6, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.moveTo(9.9, -8.2); ctx.lineTo(12, -6); ctx.stroke(); }
+  // head
+  ctx.fillStyle = pal.skin; ctx.beginPath(); ctx.arc(0, -21.5, 4.8, 0, 7); ctx.fill();
+  ctx.fillStyle = pal.hair; ctx.beginPath(); ctx.arc(0, -22.2, 4.9, Math.PI * 1.02, Math.PI * 1.98); ctx.fill(); RR(-4.9, -23, 2, 4, 1, pal.hair);
+  ctx.fillStyle = "#15171d"; ctx.beginPath(); ctx.arc(-1.8, -21.2, .7, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(1.8, -21.2, .7, 0, 7); ctx.fill();
+  const m = p.mood && now() < p.moodUntil ? p.mood : null;
+  ctx.strokeStyle = "#7a3b2e"; ctx.lineWidth = .6; ctx.beginPath();
+  if (m === "bad") ctx.arc(0, -17.9, 1.3, Math.PI * 1.1, Math.PI * 1.9); else ctx.arc(0, -19.4, 1.3, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+  if (p.role === "support") { ctx.strokeStyle = "#15171d"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, -22, 5.4, Math.PI, 0); ctx.stroke(); RR(-6.4, -23, 2, 4, 1, "#15171d"); ctx.beginPath(); ctx.moveTo(-5.5, -19); ctx.lineTo(-3, -17.8); ctx.stroke(); }
+  if (p.role === "curator") { ctx.strokeStyle = "#15171d"; ctx.lineWidth = .7; ctx.beginPath(); ctx.arc(-1.9, -21.2, 1.6, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(1.9, -21.2, 1.6, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-.3, -21.2); ctx.lineTo(.3, -21.2); ctx.stroke(); }
+  if (extra.hat) { RR(-5.6, -26.3, 11.2, 1.8, .8, "#222"); RR(-3.6, -29.8, 7.2, 4, 1.4, "#222"); }
+  if (p.carry) { ctx.save(); ctx.translate(6.4, -12); ctx.rotate(-.3); RR(-3, -3.5, 7, 7, 1, "#f4f7ef"); R(-2, -1.8, 5, .6, "#aab"); R(-2, 0, 4, .6, "#aab"); R(-2, 1.6, 5, .6, "#aab"); ctx.restore(); }
+  ctx.restore(); ctx.restore();
+}
+
+function drawBubble(cx, topY, text, color, maxW = 100) {
+  const lines = wrapText(clip(text, 90), maxW, 8.5).slice(0, 4);
+  ctx.font = `700 8.5px ${FONT}`;
+  const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 10, h = lines.length * 10 + 7;
+  const x = Math.min(W - w - 2, Math.max(X0 + 2, cx - w / 2)), y = Math.max(24, topY - h - 5);
+  ctx.save(); ctx.shadowColor = "rgba(0,0,0,.5)"; ctx.shadowBlur = 6 * SX; RR(x, y, w, h, 4, "#f6f9f1"); ctx.restore();
+  ctx.strokeStyle = color || "#263020"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.roundRect(x, y, w, h, 4); ctx.stroke();
+  ctx.fillStyle = "#f6f9f1"; ctx.beginPath(); ctx.moveTo(cx - 3, y + h - .5); ctx.lineTo(cx, y + h + 4); ctx.lineTo(cx + 3, y + h - .5); ctx.fill();
+  lines.forEach((l, i) => T(l, x + 5, y + 10 + i * 10, "#12170f", 8.5, "left", 700));
+}
+
+function drawEmote(cx, y, kind) {
+  if (kind === "heart") { ctx.fillStyle = "#ff4d6d"; ctx.beginPath(); ctx.moveTo(cx, y + 8); ctx.bezierCurveTo(cx - 8, y + 2, cx - 4, y - 4, cx, y + 1); ctx.bezierCurveTo(cx + 4, y - 4, cx + 8, y + 2, cx, y + 8); ctx.fill(); }
+  else if (kind === "bad") { T("!!", cx, y + 8, RED, 12, "center", 800); }
+  else if (kind === "ask") T("?", cx, y + 8, AMBER, 13, "center", 800);
+}
+
+/* ---------- scene ---------- */
+function drawBuilding() {
+  R(0, 0, W, H, "#05070a");
+  R(10, 22, 18, 302, "#0c1209"); R(12, 22, 14, 302, "#1b2a12");
+  for (let y = 26; y < 322; y += 12) R(16, y, 6, 1, "rgba(118,185,0,.18)");
+  R(8, 18, 22, 5, GREEN); T("EVENT TUBE", 19, 14, GREEN, 6, "center");
+  FLOORS.forEach((f, i) => drawFloor(f, i));
+  R(0, 322, W, 2, GREEN);
+}
+
+function drawFloor(f, i) {
+  const top = FL_TOP(i), g = FL_GROUND(i), live = f.key === "brain";
+  R(X0, top, W - X0, 98, "#171d14"); R(X0, top, W - X0, 4, "#0c1009");
+  for (let x = X0 + 6; x < W; x += 30) R(x, top + 30, 1, 60, "rgba(255,255,255,.025)");
+  for (let x = X0 + 40; x < W - 60; x += 80) { R(x, top + 6, 40, 3, "#e9efe2"); R(x, top + 9, 40, 1, "rgba(233,239,226,.3)"); }
+  R(X0, g, W - X0, 4, "#2c3626"); R(X0, g + 4, W - X0, 2, "#0c1009");
+  R(26, RAIL_Y(i), W - 26, 2, "#2a3524"); R(26, RAIL_Y(i) + 2, W - 26, 1, "#0c1009");
+  R(26, RAIL_Y(i) - 2, 4, 6, f.color);
+  R(X0 + 4, top + 8, 96, 11, "#0a0d09"); R(X0 + 4, top + 8, 96, 1, f.color); T(f.name, X0 + 8, top + 17, f.color, 8);
+  const gv = state.gauge[f.key];
+  R(W - 78, top + 8, 70, 11, "#0a0d09"); R(W - 78, top + 8, 70, 1, f.color);
+  T(gv == null ? "ACC --" : `ACC ${Math.round(gv * 100)}%`, W - 74, top + 17, gv == null ? "#566" : (gv > .5 ? GREEN : gv > .2 ? AMBER : RED), 8);
+  if (gv != null) { R(W - 78, top + 21, 70, 2, "#0a0d09"); R(W - 78, top + 21, 70 * gv, 2, f.color); }
+
+  if (f.key === "no_memory") drawBoard(top, g);
+  if (f.key === "naive") drawPile(top, g);
+  if (f.key === "brain") drawCabinet(top, g);
+
+  const crew = folks.filter(p => p.floor === i);
+  crew.forEach(p => drawPerson(p, g));
+  for (const r of ["support", "writer", "analyst"]) drawDesk(DESK_X[r], g, PAL[r].body);
+  if (live) { drawDesk(CUR_X, g, "#e8efe0"); drawDesk(VER_X, g, TEAL); }
+  crew.forEach(p => T(NAMES[p.role], p.hx, g - 3, "#b8c4ac", 6, "center"));
+  R(COUNTER_X - 20, g - 14, 40, 14, "#3a4632"); R(COUNTER_X - 20, g - 15, 40, 2, f.color); T("HELP", COUNTER_X, g - 4, "#e8efe0", 6, "center");
+  const c = customers[i];
+  if (c.on) {
+    drawPerson({ x: c.x, tx: c.tx, walk: c.walk, role: "customer", carry: false, mood: c.mood, moodUntil: c.moodUntil }, g, { pal: { body: c.hue, hair: "#222", skin: "#e5b88f" }, hat: true });
+    if (c.mood && now() < c.moodUntil) drawEmote(c.x, g - 56, c.mood);
+  }
+  if (live && state.siren > now()) {
+    const k = Math.abs(Math.sin((state.siren - now()) / 140));
+    R(X0, top + 4, W - X0, 90, `rgba(255,50,60,${0.1 + 0.16 * k})`);
+    R(X0 + 6, top + 24, 6, 6, k > .5 ? RED : "#7a1f24");
+  }
+  for (const p of crew) if (p.bubble && now() < p.until) drawBubble(p.x, g - 42, p.bubble.text, p.bubble.color);
+  if (c.on && c.bubble && now() < c.until) drawBubble(c.x, g - 46, c.bubble.text, c.bubble.color, 88);
+}
+
+function drawDesk(x, g, col) {
+  RR(x - 17, g - 12, 34, 12, 2, "#38452f"); R(x - 17, g - 12, 34, 2.2, "#51623f"); R(x - 15, g - 3, 30, .8, "rgba(0,0,0,.25)");
+  RR(x + 6, g - 25, 11, 9, 1.4, "#0a0d09"); RR(x + 7.2, g - 23.8, 8.6, 6.4, 1, col); R(x + 10.5, g - 16, 2, 4, "#0a0d09");
+  ctx.save(); ctx.globalAlpha = .25; R(x + 7.2, g - 23.8, 8.6, 2, "#fff"); ctx.restore();
+}
+
+function drawBoard(top, g) {
+  const x = BOARD_X, y = top + 30;
+  RR(x - 3, y - 3, 106, 60, 3, "#4a3a28"); RR(x, y, 100, 54, 2, "#b09468");
+  T("LAST 30 EVENTS · " + state.memTokens.no_memory + " tok", x + 50, y - 5, "#9aa3ad", 6, "center");
+  state.board.forEach((e, i) => {
+    const nx = x + 6 + (i % 3) * 32, ny = y + 6 + Math.floor(i / 3) * 24, last = i === state.board.length - 1;
+    RR(nx, ny, 28, 20, 1.5, TYPE_COLOR[e.type] || "#ddd"); R(nx, ny, 28, 3, "rgba(0,0,0,.2)");
+    R(nx + 3, ny + 7, 22, 1, "rgba(0,0,0,.4)"); R(nx + 3, ny + 11, 16, 1, "rgba(0,0,0,.4)"); R(nx + 3, ny + 15, 20, 1, "rgba(0,0,0,.4)");
+    if (last) R(nx - 1, ny - 1, 30, 1, "#fff");
+  });
+  for (const n of state.falling) RR(n.x, n.y, 28, 20, 1.5, TYPE_COLOR[n.type] || "#ddd");
+}
+
+function drawPile(top, g) {
+  const n = Math.round(state.naiveShown), x = PILE_X;
+  for (let k = 0; k < n; k++) {
+    const layer = Math.floor(k / 5), jx = ((k * 37) % 23) - 11, jy = layer * 2;
+    RR(x + jx - 10, g - 4 - jy, 20, 2.4, 1, k % 2 ? "#eef3e6" : "#d3dacb");
+    if (k % 7 === 0) R(x + jx - 6, g - 3.4 - jy, 6, 1, RED);
+    if (k % 11 === 3) R(x + jx + 1, g - 3.4 - jy, 7, 1, BLUE);
+  }
+  T("SHARED LOG · " + state.memTokens.naive + " tok", x, g - 6 - Math.floor(n / 5) * 2, BLUE, 6, "center");
+}
+
+function drawCabinet(top, g) {
+  const x = CAB_X, y = top + 26;
+  RR(x - 3, y - 3, 120, 72, 4, "#2f4a1f"); RR(x, y, 114, 66, 3, "#0b1208");
+  T("PRODUCT BRAIN · " + state.memTokens.brain + " tok", x + 57, y - 5, GREEN, 6, "center");
+  const cards = state.wall.slice(0, 8);
+  if (!cards.length) T("empty", x + 57, y + 36, "#3a4a30", 8, "center");
+  cards.forEach((c, i) => {
+    const cx = x + 3 + (i % 2) * 56, cy = y + 3 + Math.floor(i / 2) * 15;
+    const fl = state.flash[c.name] ? Math.max(0, 1 - (now() - state.flash[c.name]) / 2000) : 0;
+    RR(cx, cy, 53, 13, 2, fl > 0 ? "#2f4a17" : "#16200f"); R(cx + 1, cy, 51, 1, fl > 0 ? GREEN : "#2a3f1c");
+    T(clip(c.name, 8), cx + 2, cy + 8, "#e8efe0", 6);
+    ["ios", "android", "web"].forEach((p, j) => {
+      const pl = c.platforms[p], col = pl ? STATUS_COLOR[pl.status] || GREY : "#333";
+      RR(cx + 33 + j * 6, cy + 4, 4.2, 5, 1.2, col);
+      if (pl && pl.disputed) R(cx + 33 + j * 6, cy + 2, 4, 1, AMBER);
+    });
+  });
+  if (state.banner && now() < state.banner.until) {
+    const b = state.banner, k = Math.min(1, (now() - b.t0) / 250), by = y + 24 - 8 * (1 - k);
+    RR(x - 6, by, 126, 18, 4, b.color);
+    T(b.text, x + 57, by + 12, "#0a0d09", 8, "center");
+  }
+}
+
+function drawHUD() {
+  R(0, 0, W, 16, "#05070a"); R(0, 15, W, 1, "#1d2619");
+  T("PRODUCT BRAIN", 6, 12, GREEN, 10); T("TOWER", 82, 12, "#8a9680", 8);
+  if (RUN) {
+    const n = RUN.days.length, x0 = 270, x1 = 420;
+    T(`${RUN.meta.product.toUpperCase()}  DAY ${String(day).padStart(2, "0")}/${n - 1}`, x0 - 8, 12, "#e8efe0", 8, "right");
+    R(x0, 8, x1 - x0, 2, "#1d2619"); R(x0, 8, (x1 - x0) * day / (n - 1), 2, GREEN);
+    for (const d of state.cpDays) { const fx = x0 + (x1 - x0) * d / (n - 1), c = d <= day ? GREEN : "#3a4a30"; R(fx, 2, 1, 10, c); R(fx + 1, 2, 5, 3, c); }
+    R(x0 + (x1 - x0) * day / (n - 1) - 1, 6, 3, 6, "#fff");
+  }
+  R(0, 324, W, 36, "#05070a"); R(4, 327, W - 8, 30, "#0e140b"); R(4, 327, W - 8, 1, GREEN); R(4, 356, W - 8, 1, "#263020");
+  const n = state.narr, shown = Math.floor((now() - n.t0) / 12 * Math.max(1, speed));
+  if (n.who) { R(10, 321, Math.max(40, n.who.length * 5 + 10), 9, GREEN); T(n.who, 14, 328, "#05070a", 7); }
+  wrapText(n.text.slice(0, shown), W - 28, 8).slice(0, 2).forEach((l, i) => T(l, 12, 341 + i * 10, "#e8efe0", 8));
+}
+
+function drawFrame() {
+  ctx.setTransform(SX, 0, 0, SY, 0, 0);
+  ctx.save();
+  if (state.shake > now()) ctx.translate(Math.round((Math.random() - .5) * 3), Math.round((Math.random() - .5) * 3));
+  drawBuilding();
+  for (const c of caps) {
+    const [x, y] = c.pos;
+    R(x - 3, y - 3, 7, 6, c.color); R(x - 3, y - 3, 7, 1, "#fff"); if (c.tag) T(c.tag, x, y - 5, c.color, 8, "center");
+  }
+  for (const f of floaters) {
+    ctx.globalAlpha = Math.max(0, 1 - f.age / 1.6);
+    T(f.text, f.x, f.y - f.age * 14, f.color, f.size || 8, "center"); ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+  drawHUD();
+}
+
+/* ---------- simulation tick ---------- */
+function update(dt) {
+  for (const p of folks) {
+    if (p.tx == null) { p.walk = 0; continue; }
+    const dx = p.tx - p.x, step = 85 * speed * dt; p.walk += dt * 14 * speed;
+    if (Math.abs(dx) <= step) { p.x = p.tx; p.tx = null; const f = p.done; p.done = null; if (f) f(); } else p.x += Math.sign(dx) * step;
+  }
+  for (const c of customers) {
+    if (c.tx == null) { c.walk = 0; continue; }
+    const dx = c.tx - c.x, step = 70 * speed * dt; c.walk += dt * 14 * speed;
+    if (Math.abs(dx) <= step) { c.x = c.tx; c.tx = null; const f = c.done; c.done = null; if (f) f(); } else c.x += Math.sign(dx) * step;
+  }
+  for (let i = caps.length - 1; i >= 0; i--) {
+    const c = caps[i], [tx, ty] = c.path[c.i], dx = tx - c.pos[0], dy = ty - c.pos[1], d = Math.hypot(dx, dy), step = 150 * speed * dt;
+    if (d <= step) { c.pos = [tx, ty]; c.i++; if (c.i >= c.path.length) { caps.splice(i, 1); if (c.onArrive) c.onArrive(); } }
+    else { c.pos[0] += dx / d * step; c.pos[1] += dy / d * step; }
+  }
+  for (let i = floaters.length - 1; i >= 0; i--) { floaters[i].age += dt * speed; if (floaters[i].age > 1.6) floaters.splice(i, 1); }
+  for (let i = state.falling.length - 1; i >= 0; i--) { const n = state.falling[i]; n.vy += 160 * dt; n.y += n.vy * dt; if (n.y > 330) state.falling.splice(i, 1); }
+  if (state.naiveShown < state.naiveTarget) state.naiveShown = Math.min(state.naiveTarget, state.naiveShown + 20 * dt * speed);
+  else if (state.naiveShown > state.naiveTarget) state.naiveShown = state.naiveTarget;
+}
+let last = now();
+function tick() {
+  const t = now(), dt = Math.min(.5, Math.max(0, (t - last) / 1000));
+  if (dt < 0.008) return; last = t;
+  try { update(dt); drawFrame(); } catch (e) { console.error("frame error", e); window.__frameError = String(e.stack || e); }
+}
+(function raf() { tick(); requestAnimationFrame(raf); })();
+setInterval(tick, 33);   // keeps animating when requestAnimationFrame is throttled
+
+/* ---------- story helpers ---------- */
+function narrate(who, text) { state.narr = { who, text, t0: now() }; }
+function floatAt(text, x, y, color, size = 8) { floaters.push({ text, x, y, color, size, age: 0 }); }
+const PILE_FOR = size => Math.min(62, Math.round(size / Math.max(1, state.naiveMax) * 62));
+
+function launchCapsules(e) {
+  const col = TYPE_COLOR[e.type] || "#ddd", role = ROUTE[e.type] || "support", tag = e.trap === "rumor" ? "?" : e.trap === "rollback" ? "!" : null;
+  FLOORS.forEach((f, i) => {
+    caps.push({ pos: [19, 24], color: col, tag, i: 0, path: [[19, RAIL_Y(i)], [DESK_X[role], RAIL_Y(i)], [DESK_X[role], FL_GROUND(i) - 24]], onArrive: () => onCapsuleLanded(f.key, role, e) });
+  });
+}
+
+function onCapsuleLanded(floorKey, role, e) {
+  const p = staff[floorKey][role], g = FL_GROUND(FLOORS.findIndex(f => f.key === floorKey));
+  if (floorKey === "no_memory") {
+    state.board.push(e);
+    if (state.board.length > 6) { const old = state.board.shift(); state.falling.push({ x: BOARD_X + 6, y: FL_TOP(2) + 36, vy: 0, type: old.type }); floatAt("forgotten", BOARD_X + 22, FL_TOP(2) + 70, "#8a8f96", 6); }
+  } else if (floorKey === "naive") {
+    floatAt("+filed", PILE_X, g - 30, BLUE, 6);
+  } else {
+    p.carry = true;
+  }
+}
+
+async function curate(rec, d) {
+  const brain = staff.brain, trio = ["support", "writer", "analyst"].map(r => brain[r]);
+  const items = rec.log.filter(l => l.action !== "prune").slice(0, 7);
+  narrate("Agents", `${rec.proposals} claims extracted. They carry them to the Curator.`);
+  const spots = [CUR_X - 60, CUR_X - 46, CUR_X - 32];
+  await Promise.all(trio.map((p, i) => moveX(p, spots[i])));
+  trio.forEach(p => say(p, "claims for you", 1500, GREEN));
+  await sleep(1200); trio.forEach(p => { p.carry = false; });
+  const cur = brain.curator, ver = brain.verifier;
+  if (!items.length) { say(cur, "Nothing new to merge.", 2000, GREEN); await sleep(1600); }
+  for (const l of items) {
+    const verify = l.action === "verify";
+    if (verify) {
+      narrate("Verifier", `${l.feature}: a weak source disagrees with the record. Re-reading both events.`);
+      await moveX(ver, CUR_X + 34); say(ver, "Checking the sources…", 1400, TEAL); await sleep(1300);
+    }
+    const col = { conflict: RED, rollback: RED, verify: TEAL, rename: PURPLE, merge: PURPLE, dedup: AMBER, fix: GREEN, update: GREEN, create: GREEN, new_issue: AMBER, stale: AMBER }[l.action] || GREEN;
+    const who = verify ? ver : cur;
+    narrate(verify ? "Verifier" : "Curator", `${l.action.toUpperCase()} · ${l.feature} — ${l.detail}`);
+    say(who, verify ? clip(l.detail.split(" - ")[1] || l.detail, 80) : clip(l.detail, 80), 3000, col);
+    state.flash[l.feature] = now();
+    const until = ms => now() + ms / speed;
+    if (l.action === "rollback") { state.siren = until(2600); state.shake = until(600); state.banner = { text: "ROLLBACK", color: RED, t0: now(), until: until(2600) }; }
+    else if (l.action === "rename") state.banner = { text: "RENAMED", color: PURPLE, t0: now(), until: until(2200) };
+    else if (l.action === "conflict") { state.banner = { text: "REJECTED", color: AMBER, t0: now(), until: until(1800) }; emote(cur, "bad", 1500); }
+    else if (l.action === "verify") state.banner = { text: l.detail.includes("overturned") ? "OVERTURNED" : "UPHELD", color: TEAL, t0: now(), until: until(1800) };
+    else if (l.action === "dedup") { const m = l.detail.match(/\((\d+) reports\)/); state.banner = { text: m ? `MERGED x${m[1]}` : "MERGED", color: AMBER, t0: now(), until: until(1800) }; }
+    else if (l.action === "fix") state.banner = { text: "FIXED", color: GREEN, t0: now(), until: until(1600) };
+    await sleep(2200);
+    if (verify) await moveX(ver, VER_X);
+  }
+  setWallFor(d);
+  rec.brain.forEach(c => { const p = (RUN.days[d - 1]?.brain || []).find(x => x.id === c.id); if (!p || JSON.stringify(p.platforms) !== JSON.stringify(c.platforms)) state.flash[c.name] = now(); });
+  narrate("Brain", `Memory updated: ${rec.brain.length} features, ${rec.sizes.brain} tokens. The naive log is ${rec.sizes.naive}.`);
+  await Promise.all(trio.map(p => moveX(p, p.hx)));
+}
+
+function setWallFor(d) { state.wall = d >= 0 && RUN.days[d] ? JSON.parse(JSON.stringify(RUN.days[d].brain)) : []; }
+function setSizesFor(d) {
+  const s = RUN.days[Math.max(0, d)].sizes;
+  state.memTokens = { brain: s.brain, naive: s.naive, no_memory: s.no_memory || 0 };
+  state.naiveTarget = PILE_FOR(s.naive);
+}
+function setGaugesFor(d) {
+  const cp = [...RUN.days].reverse().find(x => x.checkpoint && x.day <= d);
+  FLOORS.forEach(f => { state.gauge[f.key] = cp ? cp.checkpoint.teams[f.key].accuracy : null; });
+}
+function boardFor(d) { state.board = RUN.days.slice(0, d + 1).flatMap(x => x.events).slice(-6); }
+
+async function checkpoint(rec) {
+  const cp = rec.checkpoint, by = {};
+  for (const f of FLOORS) for (const a of cp.answers[f.key]) { (by[a.qid] ||= {}); if (!by[a.qid][f.key] || a.agent === "support") by[a.qid][f.key] = a; }
+  const ids = Object.keys(by).filter(id => by[id].brain && by[id].brain.type !== "release_notes");
+  const fin = RUN.finale && RUN.finale.day === rec.day ? ids.find(id => by[id].brain.finale) : null;
+  const pick = [...new Set([fin, ...ids].filter(Boolean))];
+  const chosen = [], types = new Set();
+  for (const id of pick) { const ty = by[id].brain.type; if (!types.has(ty) || chosen.length < 2) { chosen.push(id); types.add(ty); } if (chosen.length >= 3) break; }
+  narrate("Checkpoint", "Customers arrive at all three floors with the same questions. The hidden truth table grades every answer.");
+  await sleep(1600);
+  for (const id of chosen) {
+    const row = by[id], q = row.brain, qtxt = q.question.replace(/^A customer asks:\s*/i, "");
+    narrate("Customer", `${qtxt}   (truth: ${JSON.stringify(q.truth)})`);
+    await Promise.all(customers.map(c => { c.on = true; c.x = W + 14; c.mood = null; c.bubble = null; return new Promise((res, rej) => { const t = token; c.tx = CUST_X; c.done = () => (t === token ? res() : rej(new Cancel())); }); }));
+    customers.forEach(c => { c.bubble = { text: qtxt, color: AMBER }; c.until = now() + 3500 / speed; });
+    await sleep(1800);
+    for (let i = 0; i < FLOORS.length; i++) {
+      const f = FLOORS[i], a = row[f.key]; if (!a) continue;
+      const agent = staff[f.key][a.agent] || staff[f.key].support, c = customers[i];
+      const txt = q.type === "release_notes" ? `${(a.answer || []).length} features` : a.abstain ? "I don't know" : String(a.answer);
+      const col = a.correct ? GREEN : a.abstain ? AMBER : RED;
+      say(agent, `${txt}${a.revised ? " (self-checked)" : ""}`, 2600, col);
+      emote(c, a.correct ? "heart" : a.abstain ? "ask" : "bad", 2200);
+      floatAt(a.correct ? "CORRECT" : a.abstain ? "UNKNOWN" : a.stale ? "STALE" : "WRONG", c.x, FL_GROUND(i) - 46, col, 8);
+      await sleep(500);
+    }
+    await sleep(2200);
+    await Promise.all(customers.map(c => new Promise((res, rej) => { const t = token; c.bubble = null; c.tx = W + 20; c.done = () => { c.on = false; t === token ? res() : rej(new Cancel()); }; })));
+  }
+  setGaugesFor(rec.day);
+  narrate("Scoreboard", FLOORS.map(f => `${f.name.split(" ")[0]} ${Math.round(cp.teams[f.key].accuracy * 100)}%`).join("   "));
+  await sleep(1600);
+}
+
+async function playDay(d) {
+  const rec = RUN.days[d];
+  day = d; $("scrub").value = d;
+  setSizesFor(d - 1 >= 0 ? d - 1 : 0);
+  if (d === 0) { state.naiveShown = 0; state.naiveTarget = 0; state.board = []; setWallFor(-1); }
+  narrate("Day " + d, `${rec.events.length} new events drop down the tube into all three offices.`);
+  await sleep(1200);
+  for (const e of rec.events.slice(0, 7)) {
+    narrate(`${TYPE_NAME[e.type] || e.type} · ${e.time}`, `${e.author}: "${e.text}"${e.trap === "rumor" ? "   [a rumor]" : e.trap === "rollback" ? "   [rollback notice]" : ""}`);
+    launchCapsules(e);
+    await sleep(1350);
+  }
+  await sleep(900);
+  setSizesFor(d);
+  await curate(rec, d);
+  await sleep(500);
+  if (rec.checkpoint) await checkpoint(rec);
+  await sleep(500);
+}
+
+/* ---------- controls ---------- */
+function resetStage() {
+  caps.length = 0; floaters.length = 0; state.falling.length = 0; state.banner = null; state.siren = 0; state.shake = 0;
+  folks.forEach(p => { p.x = p.hx; p.tx = null; p.done = null; p.bubble = null; p.carry = false; p.mood = null; });
+  customers.forEach(c => { c.on = false; c.tx = null; c.done = null; c.x = W + 20; c.bubble = null; c.mood = null; });
+}
+function showStatic(d) {
+  token++; playing = false; $("play").textContent = "Play"; resetStage();
+  day = d; $("scrub").value = d;
+  setSizesFor(d); state.naiveShown = state.naiveTarget; setWallFor(d); setGaugesFor(d); boardFor(d);
+  const rec = RUN.days[d];
+  narrate(`Day ${d}`, `${rec.events.length} events, ${rec.log.length} curator actions${rec.checkpoint ? ", checkpoint day" : ""}. Press Play to watch the tower work.`);
+}
+async function runFrom(start) {
+  const my = ++token; playing = true; $("play").textContent = "Pause";
+  resetStage();
+  try { for (let d = start; d < RUN.days.length; d++) await playDay(d); }
+  catch (e) { if (!(e instanceof Cancel)) throw e; return; }
+  if (my === token) {
+    playing = false; $("play").textContent = "Replay";
+    const s = RUN.summary;
+    narrate("The end", `Final accuracy: Product Brain ${Math.round(s.brain.accuracy * 100)}%, Naive ${Math.round(s.naive.accuracy * 100)}%, No memory ${Math.round(s.no_memory.accuracy * 100)}%.`);
+  }
+}
+function loadRunScript(id) {
+  return new Promise((res, rej) => {
+    if (window.RUNS && window.RUNS[id]) return res(window.RUNS[id]);
+    const s = document.createElement("script"); s.src = `runs/${id}.js`;
+    s.onload = () => res(window.RUNS[id]); s.onerror = () => rej(new Error("failed to load " + id)); document.head.appendChild(s);
+  });
+}
+async function selectRun(id) {
+  try { RUN = await loadRunScript(id); } catch (e) { narrate("Error", e.message); return; }
+  $("scrub").max = RUN.days.length - 1; state.flash = {};
+  state.cpDays = RUN.days.filter(d => d.checkpoint).map(d => d.day);
+  state.naiveMax = Math.max(...RUN.days.map(d => d.sizes.naive), 1);
+  showStatic(0);
+}
+(function init() {
+  const idx = window.RUN_INDEX || [];
+  narrate("Loading", "Fetching the run…");
+  if (!idx.length) narrate("No runs", "Run python -m product_brain run, then python -m product_brain.viewer_export.");
+  $("run").innerHTML = idx.map(r => `<option value="${r.id}">${r.label}</option>`).join("");
+  const pref = new URLSearchParams(location.search).get("run");
+  const first = pref || (idx.find(r => r.mode === "live") || idx[0] || {}).id;
+  if (first) { $("run").value = first; selectRun(first); }
+  $("run").onchange = e => selectRun(e.target.value);
+  $("play").onclick = () => { if (!RUN) return; if (playing) { token++; playing = false; $("play").textContent = "Play"; } else runFrom(day >= RUN.days.length - 1 ? 0 : day); };
+  $("scrub").oninput = e => RUN && showStatic(+e.target.value);
+  const speeds = [1, 2, 4]; let si = 0;
+  $("speedBtn").onclick = () => { si = (si + 1) % speeds.length; speed = speeds[si]; $("speedBtn").textContent = speed + "x"; };
+  addEventListener("keydown", e => { if (e.code === "Space") { e.preventDefault(); $("play").click(); } });
+})();
+</script>
+</body>
+</html>

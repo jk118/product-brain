@@ -38,6 +38,19 @@ class GeneratorTest(unittest.TestCase):
             self.assertEqual(final[by_trap["duplicates"].fid]["issues"], {"export-crash": "fixed", "timezone": "open"})
 
 
+    def test_no_feature_regresses_from_live_to_beta(self):
+        # A launch must never be followed by an "enters beta" release (only a rollback may undo it).
+        for days in (14, 18, 21, 28):
+            for seed in range(25):
+                w = generate(seed, days)
+                for f in w.features:
+                    for d in range(1, days):
+                        for p, before in w.truth[d - 1][f.fid]["platforms"].items():
+                            after = w.truth[d][f.fid]["platforms"][p]
+                            self.assertFalse(before == "live" and after == "beta",
+                                             f"seed {seed} days {days} {f.name} {p} live->beta on day {d}")
+
+
 class CuratorTest(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(":memory:")

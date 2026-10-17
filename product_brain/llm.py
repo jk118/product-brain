@@ -37,19 +37,21 @@ class Settings:
     concurrency: int = 8
     max_tokens: int = 1024
     timeout: float = 90.0
+    thinking: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
         load_dotenv()
         env = lambda k, default="": os.environ.get(k) or default  # blank values in .env fall back too
-        agent = env("AGENT_MODEL", "nvidia/nemotron-3.5-lightning-30b-a3b")
+        agent = env("AGENT_MODEL", "nvidia/Nemotron-3.5-Lightning-30B-A3B")
         return cls(
             base_url=env("CRUSOE_BASE_URL", "https://api.inference.crusoecloud.com/v1"),
             api_key=env("CRUSOE_API_KEY"),
             agent_model=agent,
-            curator_model=env("CURATOR_MODEL", "nvidia/Nemotron-3-Super-120B-A12B"),
+            curator_model=env("CURATOR_MODEL", "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B"),
             concurrency=int(env("LLM_CONCURRENCY", "4")),
             max_tokens=int(env("LLM_MAX_TOKENS", "1024")),
+            thinking=env("LLM_THINKING", "false").lower() in ("1", "true", "yes"),
         )
 
 
@@ -90,6 +92,8 @@ class LLM:
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
             "max_tokens": max_tokens or self.settings.max_tokens,
             "temperature": temperature,
+            # Nemotron reasons by default and can spend the whole budget before answering
+            "chat_template_kwargs": {"enable_thinking": self.settings.thinking},
         }
         async with self._sem:
             data = await asyncio.to_thread(self._post, body)

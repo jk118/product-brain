@@ -220,9 +220,9 @@ class _Gen:
 
     def rollback(self, f):
         self.intro(f, self.rng.randint(0, 1))
-        self.release(self.rng.randint(1, 3), f, f.name, "beta", PLATFORMS,
-                     f"{{ver}}: {f.name} enters beta on all platforms.")
-        live = self.span(0.25, 0.4)
+        b = self.rng.randint(1, 3)
+        self.release(b, f, f.name, "beta", PLATFORMS, f"{{ver}}: {f.name} enters beta on all platforms.")
+        live = max(self.span(0.25, 0.4), b + 2)
         self.release(live, f, f.name, "live", PLATFORMS,
                      f"{{ver}}: {f.name} is generally available on iOS, Android and Web.",
                      announce=f"{f.name} is live for everyone! Try it today.",
@@ -246,14 +246,14 @@ class _Gen:
     def rename_split(self, f):
         old, new = f.name, f.rename_to
         self.intro(f, self.rng.randint(0, 1))
-        self.release(self.rng.randint(1, 3), f, old, "beta", PLATFORMS,
-                     f"{{ver}}: {old} enters beta on iOS, Android and Web.")
-        ios = self.span(0.2, 0.33)
+        b = self.rng.randint(1, 3)
+        self.release(b, f, old, "beta", PLATFORMS, f"{{ver}}: {old} enters beta on iOS, Android and Web.")
+        ios = max(self.span(0.2, 0.33), b + 2)
         self.release(ios, f, old, "live", ("ios",),
                      f"{{ver}}: {old} is generally available on iOS. Android and Web remain in beta.",
                      announce=f"{old} has arrived on iOS! Android and Web are coming soon.",
                      cheer=f"{old} is live on iOS 🚀", trap="platform_split")
-        r = self.span(0.42, 0.55)
+        r = max(self.span(0.42, 0.55), ios + 2)
         m = 11 * 60
         self.emit(r, "release_log", RELEASE_BOT,
                   f"{{ver}}: {old} is renamed to {new} across all platforms. No change in functionality.",
@@ -278,9 +278,9 @@ class _Gen:
 
     def platform_split(self, f):
         self.intro(f, self.rng.randint(0, 2))
-        self.release(self.rng.randint(2, 4), f, f.name, "beta", PLATFORMS,
-                     f"{{ver}}: {f.name} enters beta on iOS, Android and Web.")
-        live = self.span(0.3, 0.5)
+        b = self.rng.randint(2, 4)
+        self.release(b, f, f.name, "beta", PLATFORMS, f"{{ver}}: {f.name} enters beta on iOS, Android and Web.")
+        live = max(self.span(0.3, 0.5), b + 2)
         self.release(live, f, f.name, "live", ("ios", "web"),
                      f"{{ver}}: {f.name} is generally available on iOS and Web. Android stays in beta while we "
                      f"fix performance on low-end devices.",
@@ -305,9 +305,9 @@ class _Gen:
         target = self.rng.randint(35, 45) / 100
         self.intro(f, self.rng.randint(0, 1), f" Expected impact: {target:.0%} weekly adoption within a week of launch.",
                    claims=[c_target(f.name, target)], truth=[("target", f.fid, target)])
-        self.release(self.rng.randint(1, 2), f, f.name, "beta", PLATFORMS,
-                     f"{{ver}}: {f.name} enters beta on iOS, Android and Web.")
-        live = self.span(0.2, 0.3)
+        b = self.rng.randint(1, 2)
+        self.release(b, f, f.name, "beta", PLATFORMS, f"{{ver}}: {f.name} enters beta on iOS, Android and Web.")
+        live = max(self.span(0.2, 0.3), b + 2)
         self.release(live, f, f.name, "live", PLATFORMS,
                      f"{{ver}}: {f.name} is generally available on iOS, Android and Web.",
                      announce=f"{f.name} is here for everyone!")

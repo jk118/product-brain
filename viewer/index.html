@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product Brain Timeline</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f3f2ee;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10);
+  --brain: #2a78d6; --naive: #eb6834; --nomem: #1baf7a;
+  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  --flash: rgba(250,178,25,0.28); --snap: rgba(208,59,59,0.18); --merge: rgba(42,120,214,0.18);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #242422;
+    --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+    --brain: #3987e5; --naive: #d95926; --nomem: #199e70;
+    --flash: rgba(250,178,25,0.22); --snap: rgba(208,59,59,0.28); --merge: rgba(57,135,229,0.25);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #242422;
+  --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+  --brain: #3987e5; --naive: #d95926; --nomem: #199e70;
+  --flash: rgba(250,178,25,0.22); --snap: rgba(208,59,59,0.28); --merge: rgba(57,135,229,0.25);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header, main { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
+header { padding-top: 20px; }
+h1 { font-size: 22px; margin: 0 0 2px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 0 0 10px; }
+.sub { color: var(--ink-2); margin: 0 0 16px; }
+.panel { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 14px; min-width: 0; }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 14px; }
+.tile .label { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-weight: 600; }
+.tile .hero { font-size: 34px; font-weight: 700; margin: 4px 0 0; }
+.tile .hero small { font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.tile .meta { color: var(--ink-2); font-size: 12px; }
+.swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.controls input[type=range] { flex: 1 1 240px; accent-color: var(--brain); }
+button, select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--axis);
+  border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+button:hover { background: var(--surface-2); }
+.daylabel { font-weight: 700; min-width: 80px; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 14px; margin-bottom: 14px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.card { border: 1px solid var(--ring); border-radius: 10px; padding: 10px 12px; background: var(--surface); position: relative; }
+.card h3 { margin: 0; font-size: 15px; }
+.card .former { color: var(--ink-2); font-size: 12px; }
+.card .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 2px 8px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--ring); }
+.pill .dot { width: 8px; height: 8px; border-radius: 50%; }
+.pill.disputed { border-color: var(--warning); }
+.card .facts { font-size: 12px; color: var(--ink-2); margin-top: 8px; }
+.card .warn { font-size: 12px; margin-top: 6px; color: var(--ink); }
+.card.snap { animation: snap .9s ease; }
+.card.merge { animation: merge 1.2s ease; }
+.card.conflict { animation: flash 1.2s ease 2; }
+.tag { position: absolute; top: 8px; right: 10px; font-size: 11px; font-weight: 600; color: var(--ink-2); }
+@keyframes snap { 0% { transform: translateX(0); background: var(--snap); } 20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); } 60% { transform: translateX(-3px); } 100% { transform: none; background: var(--surface); } }
+@keyframes merge { 0% { transform: scale(.92); background: var(--merge); } 100% { transform: none; background: var(--surface); } }
+@keyframes flash { 0%, 100% { background: var(--surface); } 50% { background: var(--flash); } }
+@media (prefers-reduced-motion: reduce) { .card { animation: none !important; } }
+.feed { max-height: 280px; overflow: auto; font-size: 12.5px; }
+.feed div { padding: 5px 0; border-bottom: 1px solid var(--grid); }
+.feed .type { font-weight: 600; color: var(--ink-2); }
+.feed .trap { font-size: 11px; font-weight: 700; margin-left: 4px; padding: 0 6px; border-radius: 999px; background: var(--flash); }
+.log div { padding: 4px 0; border-bottom: 1px solid var(--grid); font-size: 12.5px; }
+.log .act { font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: .04em; margin-right: 6px; }
+.empty { color: var(--muted); font-size: 12.5px; }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .dlabel { fill: var(--ink); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.tooltip { position: fixed; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--ring);
+  box-shadow: 0 4px 16px rgba(0,0,0,.12); border-radius: 8px; padding: 6px 9px; font-size: 12px; display: none; z-index: 10; }
+.tooltip b { display: block; margin-bottom: 2px; }
+.stack > * + * { margin-top: 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--grid); }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--ink-2); font-weight: 600; }
+tr.current td { background: var(--surface-2); }
+.finale { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+.finale .ans { font-size: 28px; font-weight: 700; margin: 4px 0; }
+.finale .verdict { font-weight: 700; font-size: 13px; }
+.finale .reason { color: var(--ink-2); font-size: 12.5px; }
+.q { font-size: 17px; font-weight: 600; margin: 0 0 12px; }
+details summary { cursor: pointer; color: var(--ink-2); font-size: 12.5px; margin-top: 8px; }
+footer { max-width: 1280px; margin: 0 auto; padding: 8px 16px 32px; color: var(--muted); font-size: 12px; }
+@media (max-width: 860px) {
+  .grid { grid-template-columns: minmax(0,1fr); }
+  .tiles, .finale { grid-template-columns: minmax(0,1fr); }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Product Brain</h1>
+  <p class="sub" id="meta">Load a run to begin.</p>
+  <div class="tiles" id="tiles"></div>
+  <div class="controls panel">
+    <button id="play">▶ Play</button>
+    <span class="daylabel" id="daylabel">Day 0</span>
+    <input type="range" id="slider" min="0" max="0" value="0" aria-label="Simulated day">
+    <select id="speed" aria-label="Playback speed">
+      <option value="1600">Slow</option><option value="900" selected>Normal</option><option value="400">Fast</option>
+    </select>
+    <label><button type="button" onclick="document.getElementById('file').click()">Load run.json</button>
+      <input type="file" id="file" accept=".json" hidden></label>
+  </div>
+</header>
+<main>
+  <div class="grid">
+    <section class="panel">
+      <h2>Living product timeline (what the brain believes)</h2>
+      <div class="cards" id="cards"></div>
+    </section>
+    <div class="stack">
+      <section class="panel">
+        <h2>Memory size</h2>
+        <div class="legend" id="size-legend"></div>
+        <div class="chart" id="size-chart"></div>
+        <div class="empty">The no-memory team keeps nothing between days.</div>
+      </section>
+      <section class="panel">
+        <h2>Curator actions today</h2>
+        <div class="log" id="log"></div>
+      </section>
+    </div>
+  </div>
+  <div class="grid">
+    <section class="panel">
+      <h2>Event stream today</h2>
+      <div class="feed" id="feed"></div>
+    </section>
+    <section class="panel">
+      <h2>Checkpoints</h2>
+      <div class="legend" id="cp-legend"></div>
+      <div class="chart" id="stale-chart"></div>
+      <div class="chart" id="acc-chart"></div>
+      <details><summary>Table view</summary><div id="cp-table"></div></details>
+    </section>
+  </div>
+  <section class="panel" style="margin-bottom:14px">
+    <h2>Finale: same question, three teams</h2>
+    <div id="finale"></div>
+  </section>
+</main>
+<footer>Agents never see the truth table. Truth is shown here only to grade the brain. Trap tags on events are for the audience.</footer>
+<div class="tooltip" id="tip"></div>
+<script src="data.js" onerror="console.warn('no data.js yet; run python -m product_brain run')"></script>
+<script>
+const TEAMS = [
+  { key: "brain", label: "Product Brain", color: "var(--brain)" },
+  { key: "naive", label: "Naive memory", color: "var(--naive)" },
+  { key: "no_memory", label: "No memory", color: "var(--nomem)" },
+];
+const STATUS = { live: "var(--good)", beta: "var(--warning)", pulled: "var(--critical)", planned: "var(--muted)" };
+const PLAT = { ios: "iOS", android: "Android", web: "Web" };
+const ACTION_COLOR = { conflict: "var(--warning)", rollback: "var(--critical)", rename: "var(--brain)", merge: "var(--brain)",
+  dedup: "var(--ink-2)", prune: "var(--muted)", stale: "var(--serious)", fix: "var(--good)" };
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
+let RUN = null, day = 0, timer = null;
+
+function init(run) {
+  RUN = run;
+  const h = location.hash.match(/day=(\d+)/);
+  day = h ? Math.min(+h[1], run.days.length - 1) : 0;
+  const m = run.meta;
+  $("meta").textContent = `${m.product} · seed ${m.seed} · ${m.days} days · ${m.events} events · ` +
+    (m.mode === "mock" ? "mock mode (no LLM; pipeline test)" : `live: ${m.agent_model}`) + ` · extraction: ${m.extract}`;
+  $("slider").max = m.days - 1;
+  $("tiles").innerHTML = TEAMS.map(t => {
+    const s = run.summary[t.key];
+    return `<div class="panel tile"><div class="label"><span class="swatch" style="background:${t.color}"></span>${t.label}</div>
+      <div class="hero">${pct(s.stale_rate)} <small>stale answers</small></div>
+      <div class="meta">accuracy ${pct(s.accuracy)} · contradictions ${pct(s.contradiction_rate)} · notes F1 ${s.notes_f1.toFixed(2)}
+        · ${s.tokens_per_task.toLocaleString()} tokens/task · memory ${s.final_memory_tokens.toLocaleString()} tokens</div></div>`;
+  }).join("");
+  const legend = keys => TEAMS.filter(t => keys.includes(t.key))
+    .map(t => `<span><span class="swatch" style="background:${t.color}"></span>${t.label}</span>`).join("");
+  $("size-legend").innerHTML = legend(["brain", "naive"]);
+  $("cp-legend").innerHTML = legend(TEAMS.map(t => t.key));
+  render();
+}
+
+function render() {
+  const d = RUN.days[day], prev = RUN.days[day - 1];
+  $("slider").value = day;
+  $("daylabel").textContent = `Day ${day}`;
+  renderCards(d, prev);
+  renderFeed(d);
+  renderLog(d);
+  renderCharts();
+  renderTable();
+  renderFinale();
+}
+
+function renderCards(d, prev) {
+  const prevById = Object.fromEntries((prev?.brain || []).map(c => [c.id, c]));
+  const conflicted = new Set(d.log.filter(l => l.action === "conflict").map(l => l.feature));
+  const renamed = new Set(d.log.filter(l => l.action === "rename" || l.action === "merge").map(l => l.feature));
+  $("cards").innerHTML = d.brain.map(c => {
+    const p = prevById[c.id];
+    const regressed = p && Object.entries(c.platforms).some(([k, v]) => p.platforms[k]?.status === "live" && v.status !== "live");
+    const cls = regressed ? "snap" : renamed.has(c.name) ? "merge" : conflicted.has(c.name) ? "conflict" : "";
+    const tag = regressed ? "ROLLED BACK" : renamed.has(c.name) ? "RENAMED" : conflicted.has(c.name) ? "CONFLICT RESOLVED" : "";
+    const pills = Object.keys(PLAT).filter(k => c.platforms[k]).map(k => {
+      const s = c.platforms[k];
+      return `<span class="pill${s.disputed ? " disputed" : ""}" title="${esc(s.source + " · day " + s.day + (s.disputed ? " · " + s.disputed : ""))}">
+        <span class="dot" style="background:${STATUS[s.status]}"></span>${PLAT[k]}: ${s.status}${s.disputed ? " ⚑" : ""}</span>`;
+    }).join("");
+    const open = c.issues.filter(i => i.status === "open");
+    const facts = [];
+    if (c.adoption != null || c.target != null) facts.push(`adoption ${pct(c.adoption)}` + (c.target != null ? ` vs target ${pct(c.target)}` : ""));
+    if (open.length) facts.push(`${open.length} open issue${open.length > 1 ? "s" : ""} (${open.reduce((a, i) => a + i.reports, 0)} reports)`);
+    const truth = c.fid && d.truth[c.fid];
+    const diffs = truth ? Object.keys(PLAT).filter(k => c.platforms[k] && c.platforms[k].status !== truth.platforms[k])
+      .map(k => `${PLAT[k]} is really ${truth.platforms[k]}`) : [];
+    return `<div class="card ${cls}">${tag ? `<span class="tag">${tag}</span>` : ""}
+      <h3>${esc(c.name)}</h3>${c.former.length ? `<div class="former">formerly ${esc(c.former.join(", "))}</div>` : ""}
+      <div class="row">${pills}</div>
+      ${facts.length ? `<div class="facts">${esc(facts.join(" · "))}</div>` : ""}
+      ${diffs.length ? `<div class="warn">⚠ brain differs from truth: ${esc(diffs.join(", "))}</div>` : ""}</div>`;
+  }).join("") || `<div class="empty">The brain is empty.</div>`;
+}
+
+function renderFeed(d) {
+  $("feed").innerHTML = d.events.map(e => `<div><span class="type">${esc(e.time)} ${esc(e.type)}</span> · ${esc(e.author)}: ${esc(e.text)}
+    ${e.trap ? `<span class="trap">${esc(e.trap.replace(/_/g, " "))}</span>` : ""}</div>`).join("") || `<div class="empty">No events.</div>`;
+}
+
+function renderLog(d) {
+  $("log").innerHTML = d.log.map(l => `<div><span class="act" style="color:${ACTION_COLOR[l.action] || "var(--ink-2)"}">${esc(l.action)}</span>
+    <b>${esc(l.feature)}</b> ${esc(l.detail)}</div>`).join("") || `<div class="empty">Nothing to curate today.</div>`;
+}
+
+// --- charts -------------------------------------------------------------------
+function lineChart(host, { xs, series, yMax, fmt, title, cursor, xName }) {
+  const W = Math.max(280, host.clientWidth || 360), H = 170, m = { l: 42, r: 112, t: 26, b: 26 };
+  const x = v => m.l + (xs.length < 2 ? 0 : (v - xs[0]) / (xs[xs.length - 1] - xs[0]) * (W - m.l - m.r));
+  const y = v => H - m.b - (v / (yMax || 1)) * (H - m.t - m.b);
+  const ticks = [0, yMax / 2, yMax];
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">`;
+  s += `<text x="0" y="11" style="fill:var(--ink-2);font-weight:600">${esc(title)}</text>`;
+  ticks.forEach(t => s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)" stroke-width="1"/>
+    <text x="${m.l - 6}" y="${y(t) + 4}" text-anchor="end">${fmt(t)}</text>`);
+  s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)"/>`;
+  const step = Math.max(1, Math.ceil(xs.length / Math.min(8, (W - m.l - m.r) / 32)));
+  xs.forEach((v, i) => { if (i % step === 0 || i === xs.length - 1) s += `<text x="${x(v)}" y="${H - 8}" text-anchor="middle">${v}</text>`; });
+  if (cursor != null) s += `<line x1="${x(cursor)}" x2="${x(cursor)}" y1="${m.t}" y2="${y(0)}" stroke="var(--axis)" stroke-dasharray="3 3"/>`;
+  const labels = [];
+  series.forEach(sr => {
+    const pts = sr.values.map((v, i) => v == null ? null : [x(xs[i]), y(v)]).filter(Boolean);
+    if (!pts.length) return;
+    s += `<polyline fill="none" stroke="${sr.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${pts.map(p => p.join(",")).join(" ")}"/>`;
+    if (sr.markers) pts.forEach(p => s += `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="${sr.color}" stroke="var(--surface)" stroke-width="2"/>`);
+    const last = pts[pts.length - 1], lv = sr.values.filter(v => v != null).at(-1);
+    labels.push({ y: last[1], x: last[0], text: `${sr.label} ${fmt(lv)}` });
+  });
+  labels.sort((a, b) => a.y - b.y).forEach((l, i, arr) => { if (i && l.y - arr[i - 1].y < 13) l.y = arr[i - 1].y + 13; });
+  for (let i = labels.length - 1, floor = y(0); i >= 0; i--, floor -= 13) labels[i].y = Math.min(labels[i].y, floor);
+  labels.forEach(l => s += `<text class="dlabel" x="${l.x + 8}" y="${l.y + 4}">${esc(l.text)}</text>`);
+  s += `<line class="xh" x1="0" x2="0" y1="${m.t}" y2="${y(0)}" stroke="var(--ink-2)" stroke-width="1" visibility="hidden"/>`;
+  s += `<rect x="${m.l - 10}" y="0" width="${W - m.l - m.r + 20}" height="${H}" fill="transparent"/></svg>`;
+  host.innerHTML = s;
+  const svg = host.querySelector("svg"), xh = svg.querySelector(".xh"), tip = $("tip");
+  svg.querySelector("rect").addEventListener("mousemove", ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+    let i = 0; xs.forEach((v, j) => { if (Math.abs(x(v) - px) < Math.abs(x(xs[i]) - px)) i = j; });
+    xh.setAttribute("x1", x(xs[i])); xh.setAttribute("x2", x(xs[i])); xh.setAttribute("visibility", "visible");
+    tip.innerHTML = `<b>${xName} ${xs[i]}</b>` + series.map(sr => `<div><span class="swatch" style="background:${sr.color}"></span> ${esc(sr.label)}: ${fmt(sr.values[i])}</div>`).join("");
+    tip.style.display = "block";
+    tip.style.left = Math.min(ev.clientX + 14, innerWidth - 200) + "px"; tip.style.top = ev.clientY + 14 + "px";
+  });
+  svg.querySelector("rect").addEventListener("mouseleave", () => { tip.style.display = "none"; xh.setAttribute("visibility", "hidden"); });
+}
+
+function renderCharts() {
+  const xs = RUN.days.map(d => d.day);
+  const shown = RUN.days.map((d, i) => i <= day);
+  const sizeSeries = TEAMS.filter(t => t.key !== "no_memory").map(t => ({
+    label: t.label, color: t.color, values: RUN.days.map((d, i) => shown[i] ? d.sizes[t.key] : null) }));
+  const maxSize = Math.max(...RUN.days.map(d => Math.max(d.sizes.naive, d.sizes.brain)), 100);
+  lineChart($("size-chart"), { xs, series: sizeSeries, yMax: Math.ceil(maxSize / 1000) * 1000, fmt: v => v == null ? "–" : Math.round(v).toLocaleString(),
+    title: "Tokens in shared memory, by day", cursor: day, xName: "Day" });
+
+  const cps = RUN.days.filter(d => d.checkpoint).map(d => d.checkpoint);
+  const cx = cps.map(c => c.day);
+  const mk = metric => TEAMS.map(t => ({ label: t.label, color: t.color, markers: true,
+    values: cps.map(c => c.day <= day ? c.teams[t.key][metric] : null) }));
+  const f = v => v == null ? "–" : Math.round(v * 100) + "%";
+  lineChart($("stale-chart"), { xs: cx, series: mk("stale_rate"), yMax: Math.max(0.2, ...cps.flatMap(c => TEAMS.map(t => c.teams[t.key].stale_rate))),
+    fmt: f, title: "Stale answer rate (confidently stating what used to be true)", cursor: day, xName: "Checkpoint day" });
+  lineChart($("acc-chart"), { xs: cx, series: mk("accuracy"), yMax: 1, fmt: f, title: "Accuracy on checkpoint questions", cursor: day, xName: "Checkpoint day" });
+}
+
+function renderTable() {
+  const cps = RUN.days.filter(d => d.checkpoint).map(d => d.checkpoint);
+  let h = `<table><tr><th>Day</th><th>Team</th><th>Accuracy</th><th>Stale</th><th>Contradictions</th><th>Notes F1</th><th>Tokens/task</th><th>Memory</th></tr>`;
+  cps.forEach(c => TEAMS.forEach(t => {
+    const s = c.teams[t.key];
+    h += `<tr class="${c.day === day ? "current" : ""}"><td>${c.day}</td><td>${t.label}</td><td>${pct(s.accuracy)}</td><td>${pct(s.stale_rate)}</td>
+      <td>${pct(s.contradiction_rate)}</td><td>${s.notes_f1.toFixed(2)}</td><td>${s.tokens_per_task.toLocaleString()}</td><td>${s.memory_tokens.toLocaleString()}</td></tr>`;
+  }));
+  $("cp-table").innerHTML = h + "</table>";
+}
+
+function renderFinale() {
+  const f = RUN.finale;
+  if (!f) { $("finale").innerHTML = `<div class="empty">No finale question in this run.</div>`; return; }
+  if (day < f.day) { $("finale").innerHTML = `<p class="q">${esc(f.question)}</p><div class="empty">Revealed at the final checkpoint (day ${f.day}).</div>`; return; }
+  $("finale").innerHTML = `<p class="q">${esc(f.question)} <span style="color:var(--ink-2);font-weight:500">Truth: ${esc(f.truth)}</span></p>
+    <div class="finale">` + TEAMS.map(t => {
+      const a = f.answers[t.key];
+      const ok = a.correct, verdict = ok ? "✓ correct" : a.stale ? "✗ stale (used to be true)" : a.abstain ? "– doesn't know" : "✗ wrong";
+      return `<div class="panel"><div class="label" style="display:flex;gap:8px;align-items:center;font-weight:600">
+        <span class="swatch" style="background:${t.color}"></span>${t.label}</div>
+        <div class="ans">${esc(String(a.answer).toUpperCase())}</div>
+        <div class="verdict" style="color:${ok ? "var(--good)" : "var(--critical)"}">${verdict}</div>
+        <div class="reason">confidence ${Math.round(a.confidence * 100)}% · ${esc(a.reason)}</div></div>`;
+    }).join("") + `</div>`;
+}
+
+// --- controls -----------------------------------------------------------------
+function stop() { clearInterval(timer); timer = null; $("play").textContent = "▶ Play"; }
+$("play").onclick = () => {
+  if (!RUN) return;
+  if (timer) return stop();
+  if (day >= RUN.days.length - 1) day = 0;
+  $("play").textContent = "❚❚ Pause";
+  render();
+  timer = setInterval(() => { if (day >= RUN.days.length - 1) return stop(); day++; render(); }, +$("speed").value);
+};
+$("speed").onchange = () => { if (timer) { stop(); $("play").click(); } };
+$("slider").oninput = e => { stop(); day = +e.target.value; render(); };
+$("file").onchange = async e => { const f = e.target.files[0]; if (f) { stop(); init(JSON.parse(await f.text())); } };
+addEventListener("resize", () => RUN && renderCharts());
+addEventListener("keydown", e => {
+  if (!RUN || e.target.tagName === "INPUT" && e.target.type !== "range") return;
+  if (e.key === "ArrowRight") { stop(); day = Math.min(day + 1, RUN.days.length - 1); render(); }
+  if (e.key === "ArrowLeft") { stop(); day = Math.max(day - 1, 0); render(); }
+  if (e.key === " ") { e.preventDefault(); $("play").click(); }
+});
+if (window.RUN) init(window.RUN);
+</script>
+</body>
+</html>

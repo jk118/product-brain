@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import random
 import re
 import time
 import urllib.error
@@ -41,13 +42,13 @@ class Settings:
     def from_env(cls) -> "Settings":
         load_dotenv()
         env = lambda k, default="": os.environ.get(k) or default  # blank values in .env fall back too
-        agent = env("AGENT_MODEL", "nvidia/Llama-3_3-Nemotron-Super-49B-v1_5")
+        agent = env("AGENT_MODEL", "nvidia/nemotron-3.5-lightning-30b-a3b")
         return cls(
-            base_url=env("CRUSOE_BASE_URL", "https://managed-inference-api-proxy.crusoecloud.com/v1"),
+            base_url=env("CRUSOE_BASE_URL", "https://api.inference.crusoecloud.com/v1"),
             api_key=env("CRUSOE_API_KEY"),
             agent_model=agent,
-            curator_model=env("CURATOR_MODEL", agent),
-            concurrency=int(env("LLM_CONCURRENCY", "8")),
+            curator_model=env("CURATOR_MODEL", "nvidia/Nemotron-3-Super-120B-A12B"),
+            concurrency=int(env("LLM_CONCURRENCY", "4")),
             max_tokens=int(env("LLM_MAX_TOKENS", "1024")),
         )
 
@@ -103,15 +104,16 @@ class LLM:
         url = self.settings.base_url.rstrip("/") + "/chat/completions"
         req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST", headers={
             "Authorization": f"Bearer {self.settings.api_key}", "Content-Type": "application/json"})
-        for attempt in range(5):
+        tries = 8  # without a payment method Crusoe allows only 30 requests/min per model
+        for attempt in range(tries):
             try:
                 with urllib.request.urlopen(req, timeout=self.settings.timeout) as resp:
                     return json.loads(resp.read())
             except urllib.error.HTTPError as e:
-                if e.code not in (429, 500, 502, 503, 504) or attempt == 4:
+                if e.code not in (429, 500, 502, 503, 504) or attempt == tries - 1:
                     raise RuntimeError(f"LLM HTTP {e.code}: {e.read()[:300]!r}") from e
             except (urllib.error.URLError, TimeoutError):
-                if attempt == 4:
+                if attempt == tries - 1:
                     raise
-            time.sleep(2 ** attempt)
+            time.sleep(min(60, 2 ** attempt) + random.uniform(0, 1))
         raise RuntimeError("unreachable")

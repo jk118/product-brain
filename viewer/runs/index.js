@@ -1,5 +1,51 @@
 window.RUN_INDEX = [
  {
+  "id": "seed23-live-oracle",
+  "label": "seed 23 \u00b7 21d \u00b7 Nemotron-3.5-Lightning-30B-A3B \u00b7 oracle extraction",
+  "mode": "live",
+  "seed": 23,
+  "days": 21,
+  "extract": "oracle",
+  "product": "Pinwheel",
+  "agent_model": "nvidia/Nemotron-3.5-Lightning-30B-A3B",
+  "updated": 1792280294.1063294,
+  "summary": {
+   "no_memory": {
+    "questions": 166,
+    "accuracy": 0.392,
+    "stale_rate": 0.223,
+    "abstain_rate": 0.331,
+    "contradiction_rate": 0.675,
+    "notes_f1": 0.447,
+    "notes_stale_items": 0,
+    "tokens_per_task": 1390,
+    "final_memory_tokens": 0
+   },
+   "naive": {
+    "questions": 166,
+    "accuracy": 0.735,
+    "stale_rate": 0.06,
+    "abstain_rate": 0.036,
+    "contradiction_rate": 0.0,
+    "notes_f1": 0.786,
+    "notes_stale_items": 6,
+    "tokens_per_task": 3501,
+    "final_memory_tokens": 4386
+   },
+   "brain": {
+    "questions": 166,
+    "accuracy": 0.952,
+    "stale_rate": 0.012,
+    "abstain_rate": 0.0,
+    "contradiction_rate": 0.0,
+    "notes_f1": 1.0,
+    "notes_stale_items": 0,
+    "tokens_per_task": 1624,
+    "final_memory_tokens": 1020
+   }
+  }
+ },
+ {
   "id": "seed11-live-oracle",
   "label": "seed 11 \u00b7 21d \u00b7 Nemotron-3.5-Lightning-30B-A3B \u00b7 oracle extraction",
   "mode": "live",
@@ -134,52 +180,6 @@ window.RUN_INDEX = [
     "notes_stale_items": 0,
     "tokens_per_task": 1271,
     "final_memory_tokens": 1009
-   }
-  }
- },
- {
-  "id": "seed23-live-oracle",
-  "label": "seed 23 \u00b7 21d \u00b7 Nemotron-3.5-Lightning-30B-A3B \u00b7 oracle extraction",
-  "mode": "live",
-  "seed": 23,
-  "days": 21,
-  "extract": "oracle",
-  "product": "Pinwheel",
-  "agent_model": "nvidia/Nemotron-3.5-Lightning-30B-A3B",
-  "updated": 1792274570.1699343,
-  "summary": {
-   "no_memory": {
-    "questions": 114,
-    "accuracy": 0.325,
-    "stale_rate": 0.167,
-    "abstain_rate": 0.333,
-    "contradiction_rate": 0.561,
-    "notes_f1": 0.415,
-    "notes_stale_items": 0,
-    "tokens_per_task": 1343,
-    "final_memory_tokens": 0
-   },
-   "naive": {
-    "questions": 114,
-    "accuracy": 0.579,
-    "stale_rate": 0.105,
-    "abstain_rate": 0.07,
-    "contradiction_rate": 0.105,
-    "notes_f1": 0.74,
-    "notes_stale_items": 12,
-    "tokens_per_task": 2840,
-    "final_memory_tokens": 3595
-   },
-   "brain": {
-    "questions": 114,
-    "accuracy": 0.965,
-    "stale_rate": 0.0,
-    "abstain_rate": 0.0,
-    "contradiction_rate": 0.0,
-    "notes_f1": 0.982,
-    "notes_stale_items": 0,
-    "tokens_per_task": 1291,
-    "final_memory_tokens": 719
    }
   }
  }
